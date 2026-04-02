@@ -1,19 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { useGame } from '@/context/GameContext';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
-const INITIAL_TOKENS = 100_000;
-
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 function buildSystemPrompt(tasks: any[], timetable: any[]): string {
   const taskList = tasks.length === 0
@@ -82,23 +81,9 @@ export function AIChatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [tokensRemaining, setTokensRemaining] = useState<number>(INITIAL_TOKENS);
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Load token count from DB
-  useEffect(() => {
-    if (!user) return;
-    supabase.from('ai_tokens').select('tokens_remaining').eq('user_id', user.id).single()
-      .then(({ data }) => {
-        if (data) setTokensRemaining(data.tokens_remaining);
-        else {
-          // Create initial record
-          supabase.from('ai_tokens').insert({ user_id: user.id, tokens_remaining: INITIAL_TOKENS }).then(() => {});
-        }
-      });
-  }, [user]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -149,43 +134,82 @@ export function AIChatbot() {
     content.replace(/<action>[\s\S]*?<\/action>/g, '').trim();
 
   const sendMessage = async () => {
-    if (!input.trim() || loading || tokensRemaining <= 0) return;
+    if (!input.trim() || loading) return;
     const userMsg: Message = { role: 'user', content: input.trim() };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput('');
     setLoading(true);
 
+    let assistantContent = '';
+
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch(CHAT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: buildSystemPrompt(state.tasks, state.timetable),
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+          system: buildSystemPrompt(state.tasks, state.timetable),
         }),
       });
 
-      const data = await response.json();
-      const rawContent = data.content?.[0]?.text || 'Sorry, I had trouble responding. Try again!';
-      const displayContent = stripAction(rawContent);
-      const assistantMsg: Message = { role: 'assistant', content: displayContent };
-      setMessages(prev => [...prev, assistantMsg]);
-
-      // Execute any actions
-      parseAndExecuteAction(rawContent);
-
-      // Update token count
-      const used = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
-      const newRemaining = Math.max(0, tokensRemaining - used);
-      setTokensRemaining(newRemaining);
-      if (user) {
-        await supabase.from('ai_tokens').update({ tokens_remaining: newRemaining }).eq('user_id', user.id);
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || `Error ${resp.status}`);
       }
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong — check your connection and try again.' }]);
+
+      if (!resp.body) throw new Error('No response stream');
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = '';
+
+      const upsertAssistant = (content: string) => {
+        assistantContent = content;
+        const display = stripAction(content);
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant') {
+            return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: display } : m));
+          }
+          return [...prev, { role: 'assistant', content: display }];
+        });
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (delta) upsertAssistant(assistantContent + delta);
+          } catch {
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Execute any actions from the full response
+      parseAndExecuteAction(assistantContent);
+    } catch (e: any) {
+      const errorMsg = e?.message || 'Something went wrong — try again.';
+      toast.error(errorMsg);
+      setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ ${errorMsg}` }]);
     }
     setLoading(false);
   };
@@ -196,9 +220,6 @@ export function AIChatbot() {
       sendMessage();
     }
   };
-
-  const tokenPct = (tokensRemaining / INITIAL_TOKENS) * 100;
-  const tokenColour = tokensRemaining < 10_000 ? 'text-red-500' : tokensRemaining < 30_000 ? 'text-amber-500' : 'text-primary';
 
   return (
     <>
@@ -234,30 +255,15 @@ export function AIChatbot() {
                 <Bot className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-display font-bold text-sm leading-tight">Questify AI</p>
-                <p className="text-xs text-muted-foreground">Academic Assistant</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className={`text-xs font-bold ${tokenColour}`}>
-                  {tokensRemaining.toLocaleString()} tokens
-                </p>
-                <div className="w-20 h-1 bg-muted rounded-full mt-0.5">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${tokenPct}%`,
-                      backgroundColor: tokensRemaining < 10_000 ? '#ef4444' : tokensRemaining < 30_000 ? '#f59e0b' : 'hsl(var(--primary))',
-                    }}
-                  />
-                </div>
+                <p className="font-display font-bold text-base leading-tight">Questify AI</p>
+                <p className="text-sm text-muted-foreground">Academic Assistant</p>
               </div>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {/* Disclaimer */}
               {showDisclaimer && (
-                <div className="bg-muted/60 rounded-xl p-3 text-xs text-muted-foreground flex gap-2">
+                <div className="bg-muted/60 rounded-xl p-3 text-sm text-muted-foreground flex gap-2">
                   <span>ℹ️</span>
                   <span>I can help you manage tasks, plan your timetable, and handle academic stress. I can't buy items or change your XP.</span>
                   <button onClick={() => setShowDisclaimer(false)} className="ml-auto shrink-0 hover:text-foreground">✕</button>
@@ -265,7 +271,7 @@ export function AIChatbot() {
               )}
 
               {messages.length === 0 && !showDisclaimer && (
-                <div className="text-center text-muted-foreground text-sm py-8">
+                <div className="text-center text-muted-foreground text-base py-8">
                   <p className="text-2xl mb-2">📚</p>
                   <p>Ask me anything about your tasks, timetable, or study plan!</p>
                 </div>
@@ -279,7 +285,7 @@ export function AIChatbot() {
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-base leading-relaxed whitespace-pre-wrap ${
                       msg.role === 'user'
                         ? 'bg-primary text-primary-foreground rounded-br-sm'
                         : 'bg-muted text-foreground rounded-bl-sm'
@@ -305,46 +311,33 @@ export function AIChatbot() {
                 </div>
               )}
 
-              {tokensRemaining <= 0 && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm text-red-500 text-center">
-                  You've used all your AI tokens for now. Token refills coming soon.
-                </div>
-              )}
-
               <div ref={bottomRef} />
             </div>
-
-            {/* Low token warning */}
-            {tokensRemaining > 0 && tokensRemaining < 10_000 && (
-              <div className="px-4 py-2 bg-amber-500/10 border-t border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 text-center shrink-0">
-                ⚠️ You're running low on AI tokens — use them wisely!
-              </div>
-            )}
 
             {/* Input */}
             <div className="p-3 border-t border-border shrink-0">
               <div className="flex gap-2 items-end">
                 <Textarea
                   ref={textareaRef}
-                  placeholder={tokensRemaining <= 0 ? 'No tokens remaining' : 'Ask me about your tasks or timetable…'}
+                  placeholder="Ask me about your tasks or timetable…"
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  disabled={loading || tokensRemaining <= 0}
+                  disabled={loading}
                   rows={1}
-                  className="resize-none min-h-[40px] max-h-[120px] text-sm"
+                  className="resize-none min-h-[40px] max-h-[120px] text-base"
                   style={{ fieldSizing: 'content' } as any}
                 />
                 <Button
                   size="icon"
                   onClick={sendMessage}
-                  disabled={loading || !input.trim() || tokensRemaining <= 0}
+                  disabled={loading || !input.trim()}
                   className="shrink-0 h-10 w-10"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Enter to send · Shift+Enter for new line</p>
+              <p className="text-xs text-muted-foreground mt-1.5 text-center">Enter to send · Shift+Enter for new line</p>
             </div>
           </motion.div>
         )}
