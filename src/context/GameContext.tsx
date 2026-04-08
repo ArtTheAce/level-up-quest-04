@@ -423,6 +423,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         loadedState.equippedBadge = gs.equipped_badge;
         loadedState.earnedBadges = gs.earned_badges || [];
         loadedState.darkMode = (gs as any).dark_mode ?? false;
+        loadedState.aiTokensUsed = (gs as any).ai_tokens_used ?? 0;
       }
 
       if (tasks) {
@@ -479,6 +480,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       equipped_badge: currentState.equippedBadge,
       earned_badges: currentState.earnedBadges,
       dark_mode: currentState.darkMode,
+      ai_tokens_used: currentState.aiTokensUsed,
     } as any).eq('user_id', user.id);
 
     // Sync tasks - delete all and re-insert (simple approach for now)
