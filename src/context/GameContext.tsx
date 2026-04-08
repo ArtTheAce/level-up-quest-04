@@ -68,6 +68,7 @@ interface GameState {
   equippedBadge: string | null;
   earnedBadges: string[];
   darkMode: boolean;
+  aiTokensUsed: number;
   loaded: boolean;
 }
 
@@ -87,6 +88,7 @@ type Action =
   | { type: 'EQUIP_BADGE'; badgeId: string | null }
   | { type: 'ADD_FOCUS_SESSION' }
   | { type: 'SET_DARK_MODE'; enabled: boolean }
+  | { type: 'ADD_AI_TOKENS'; amount: number }
   | { type: 'LOAD_STATE'; state: Partial<GameState> };
 
 const XP_PER_LEVEL = 100;
@@ -162,6 +164,7 @@ const initialState: GameState = {
   equippedBadge: null,
   earnedBadges: [],
   darkMode: false,
+  aiTokensUsed: 0,
   loaded: false,
 };
 
@@ -362,6 +365,10 @@ function gameReducer(state: GameState, action: Action): GameState {
 
     case 'SET_DARK_MODE':
       newState = { ...state, darkMode: action.enabled };
+      break;
+
+    case 'ADD_AI_TOKENS':
+      newState = { ...state, aiTokensUsed: state.aiTokensUsed + action.amount };
       break;
 
     default:
