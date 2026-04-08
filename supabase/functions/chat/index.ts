@@ -50,6 +50,8 @@ serve(async (req) => {
       });
     }
 
+    // Stream through and pass everything to the client as-is
+    // The client will parse usage from the final SSE chunk
     return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
