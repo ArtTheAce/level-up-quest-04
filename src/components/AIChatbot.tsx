@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { useGame } from '@/context/GameContext';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Bot } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -13,19 +14,20 @@ interface Message {
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+const TOKEN_BUDGET = 100_000;
 
 function buildSystemPrompt(tasks: any[], timetable: any[]): string {
   const taskList = tasks.length === 0
     ? 'No tasks yet.'
     : tasks.map(t =>
-        `- [${t.completed ? 'DONE' : 'TODO'}] "${t.title}" | Subject: ${t.subject || 'N/A'} | Difficulty: ${t.priority} | Deadline: ${t.deadline ? new Date(t.deadline).toLocaleString() : 'None'}`
+        `- [${t.completed ? 'DONE' : 'TODO'}] (id:${t.id}) "${t.title}" | Subject: ${t.subject || 'N/A'} | Difficulty: ${t.priority} | Deadline: ${t.deadline ? new Date(t.deadline).toLocaleString() : 'None'}`
       ).join('\n');
 
   const ttList = timetable.length === 0
     ? 'No timetable entries yet.'
     : timetable.map(e => {
         const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-        return `- ${days[e.day]}: ${e.subject} ${e.startTime}–${e.endTime}`;
+        return `- (id:${e.id}) ${days[e.day]}: ${e.subject} ${e.startTime}–${e.endTime}`;
       }).join('\n');
 
   return `You are Questify AI, an academic assistant built into the Questify student productivity app. You help students manage their academic workload with warmth, calm, and practical focus — like a smart study buddy.
@@ -61,7 +63,7 @@ OR
 {"type":"DELETE_TIMETABLE","entryId":"EXACT_ID"}
 </action>
 
-COUNTER-QUESTIONING: If the user's request is missing required fields, ask for them ONE AT A TIME before executing. For tasks: need title, subject, difficulty, (optionally deadline). For timetable: need subject, day, start time, end time. Only produce the <action> block once you have all required info.
+COUNTER-QUESTIONING: If the user's request is missing required fields, ask for them ONE AT A TIME before executing. For tasks: need title, subject, difficulty, (optionally deadline — ask but allow skip). For timetable: need subject, day, start time, end time. Only produce the <action> block once you have all required info.
 
 HARD LIMITS — you must NEVER:
 - Purchase, apply, or suggest purchasing any shop items
@@ -77,6 +79,7 @@ TONE: Calm, warm, encouraging, concise. No corporate speak. Keep responses short
 export function AIChatbot() {
   const { state, dispatch } = useGame();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -84,6 +87,10 @@ export function AIChatbot() {
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const tokensRemaining = Math.max(0, TOKEN_BUDGET - state.aiTokensUsed);
+  const isOutOfTokens = tokensRemaining <= 0;
+  const isLowTokens = tokensRemaining > 0 && tokensRemaining < 10_000;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -134,7 +141,7 @@ export function AIChatbot() {
     content.replace(/<action>[\s\S]*?<\/action>/g, '').trim();
 
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || isOutOfTokens) return;
     const userMsg: Message = { role: 'user', content: input.trim() };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
@@ -197,6 +204,15 @@ export function AIChatbot() {
             const parsed = JSON.parse(jsonStr);
             const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (delta) upsertAssistant(assistantContent + delta);
+
+            // Extract token usage from the final chunk
+            const usage = parsed.usage;
+            if (usage) {
+              const totalTokens = (usage.prompt_tokens || 0) + (usage.completion_tokens || 0);
+              if (totalTokens > 0) {
+                dispatch({ type: 'ADD_AI_TOKENS', amount: totalTokens });
+              }
+            }
           } catch {
             textBuffer = line + '\n' + textBuffer;
             break;
@@ -221,6 +237,11 @@ export function AIChatbot() {
     }
   };
 
+  // Panel sizing
+  const panelClasses = isMobile
+    ? 'fixed inset-0 z-50'
+    : 'fixed bottom-24 right-6 z-50 w-[400px] h-[min(600px,calc(100vh-8rem))]';
+
   return (
     <>
       {/* Floating button */}
@@ -233,8 +254,8 @@ export function AIChatbot() {
       >
         <AnimatePresence mode="wait">
           {open
-            ? <motion.span key="x"    initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }}><X className="h-6 w-6" /></motion.span>
-            : <motion.span key="chat" initial={{ rotate:  90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }}><MessageCircle className="h-6 w-6" /></motion.span>
+            ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }}><X className="h-6 w-6" /></motion.span>
+            : <motion.span key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }}><MessageCircle className="h-6 w-6" /></motion.span>
           }
         </AnimatePresence>
       </motion.button>
@@ -247,7 +268,7 @@ export function AIChatbot() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-24 right-6 z-50 w-[min(400px,calc(100vw-1.5rem))] h-[min(600px,calc(100vh-8rem))] glass-card flex flex-col overflow-hidden shadow-2xl"
+            className={`${panelClasses} glass-card flex flex-col overflow-hidden shadow-2xl ${isMobile ? 'rounded-none' : ''}`}
           >
             {/* Header */}
             <div className="p-4 border-b border-border flex items-center gap-3 shrink-0">
@@ -255,9 +276,14 @@ export function AIChatbot() {
                 <Bot className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-display font-bold text-base leading-tight">Questify AI</p>
-                <p className="text-sm text-muted-foreground">Academic Assistant</p>
+                <p className="font-display font-bold text-base leading-tight">🤖 Questify AI</p>
+                <p className="text-xs text-muted-foreground">Academic Assistant · Tokens: {tokensRemaining.toLocaleString()}</p>
               </div>
+              {isMobile && (
+                <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-muted">
+                  <X className="h-5 w-5" />
+                </button>
+              )}
             </div>
 
             {/* Messages */}
@@ -267,6 +293,13 @@ export function AIChatbot() {
                   <span>ℹ️</span>
                   <span>I can help you manage tasks, plan your timetable, and handle academic stress. I can't buy items or change your XP.</span>
                   <button onClick={() => setShowDisclaimer(false)} className="ml-auto shrink-0 hover:text-foreground">✕</button>
+                </div>
+              )}
+
+              {isLowTokens && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-sm text-amber-600 dark:text-amber-400 flex gap-2 items-center">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>⚠️ You're running low on AI tokens — use them wisely!</span>
                 </div>
               )}
 
@@ -316,28 +349,37 @@ export function AIChatbot() {
 
             {/* Input */}
             <div className="p-3 border-t border-border shrink-0">
-              <div className="flex gap-2 items-end">
-                <Textarea
-                  ref={textareaRef}
-                  placeholder="Ask me about your tasks or timetable…"
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  disabled={loading}
-                  rows={1}
-                  className="resize-none min-h-[40px] max-h-[120px] text-base"
-                  style={{ fieldSizing: 'content' } as any}
-                />
-                <Button
-                  size="icon"
-                  onClick={sendMessage}
-                  disabled={loading || !input.trim()}
-                  className="shrink-0 h-10 w-10"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1.5 text-center">Enter to send · Shift+Enter for new line</p>
+              {isOutOfTokens ? (
+                <div className="text-center py-3 text-sm text-muted-foreground">
+                  <p className="font-semibold">You've used all your AI tokens for now.</p>
+                  <p className="text-xs mt-1">Token refills coming soon.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-2 items-end">
+                    <Textarea
+                      ref={textareaRef}
+                      placeholder="Ask me about your tasks or timetable…"
+                      value={input}
+                      onChange={e => setInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      disabled={loading}
+                      rows={1}
+                      className="resize-none min-h-[40px] max-h-[120px] text-base"
+                      style={{ fieldSizing: 'content' } as any}
+                    />
+                    <Button
+                      size="icon"
+                      onClick={sendMessage}
+                      disabled={loading || !input.trim()}
+                      className="shrink-0 h-10 w-10"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5 text-center">Enter to send · Shift+Enter for new line</p>
+                </>
+              )}
             </div>
           </motion.div>
         )}

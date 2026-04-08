@@ -68,6 +68,7 @@ interface GameState {
   equippedBadge: string | null;
   earnedBadges: string[];
   darkMode: boolean;
+  aiTokensUsed: number;
   loaded: boolean;
 }
 
@@ -87,6 +88,7 @@ type Action =
   | { type: 'EQUIP_BADGE'; badgeId: string | null }
   | { type: 'ADD_FOCUS_SESSION' }
   | { type: 'SET_DARK_MODE'; enabled: boolean }
+  | { type: 'ADD_AI_TOKENS'; amount: number }
   | { type: 'LOAD_STATE'; state: Partial<GameState> };
 
 const XP_PER_LEVEL = 100;
@@ -162,6 +164,7 @@ const initialState: GameState = {
   equippedBadge: null,
   earnedBadges: [],
   darkMode: false,
+  aiTokensUsed: 0,
   loaded: false,
 };
 
@@ -364,6 +367,10 @@ function gameReducer(state: GameState, action: Action): GameState {
       newState = { ...state, darkMode: action.enabled };
       break;
 
+    case 'ADD_AI_TOKENS':
+      newState = { ...state, aiTokensUsed: state.aiTokensUsed + action.amount };
+      break;
+
     default:
       return state;
   }
@@ -416,6 +423,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         loadedState.equippedBadge = gs.equipped_badge;
         loadedState.earnedBadges = gs.earned_badges || [];
         loadedState.darkMode = (gs as any).dark_mode ?? false;
+        loadedState.aiTokensUsed = (gs as any).ai_tokens_used ?? 0;
       }
 
       if (tasks) {
@@ -472,6 +480,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       equipped_badge: currentState.equippedBadge,
       earned_badges: currentState.earnedBadges,
       dark_mode: currentState.darkMode,
+      ai_tokens_used: currentState.aiTokensUsed,
     } as any).eq('user_id', user.id);
 
     // Sync tasks - delete all and re-insert (simple approach for now)
