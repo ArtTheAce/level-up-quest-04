@@ -63,6 +63,7 @@ export type Database = {
         Row: {
           active_boosts: Json
           active_theme: string
+          ai_tokens_used: number
           coins: number
           created_at: string
           dark_mode: boolean
@@ -83,6 +84,7 @@ export type Database = {
         Insert: {
           active_boosts?: Json
           active_theme?: string
+          ai_tokens_used?: number
           coins?: number
           created_at?: string
           dark_mode?: boolean
@@ -103,6 +105,7 @@ export type Database = {
         Update: {
           active_boosts?: Json
           active_theme?: string
+          ai_tokens_used?: number
           coins?: number
           created_at?: string
           dark_mode?: boolean

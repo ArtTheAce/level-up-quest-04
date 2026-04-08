@@ -1,0 +1,1 @@
+ALTER TABLE public.game_state ADD COLUMN ai_tokens_used integer NOT NULL DEFAULT 0;
