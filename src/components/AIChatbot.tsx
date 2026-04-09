@@ -7,14 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+const CHAT_URL = new URL('/functions/v1/chat', import.meta.env.VITE_SUPABASE_URL).toString();
 const TOKEN_BUDGET = 100_000;
+const CHAT_ERROR_MESSAGE = 'Something went wrong — check your connection and try again.';
 
 function buildSystemPrompt(tasks: any[], timetable: any[]): string {
   const taskList = tasks.length === 0
@@ -140,6 +142,42 @@ export function AIChatbot() {
   const stripAction = (content: string) =>
     content.replace(/<action>[\s\S]*?<\/action>/g, '').trim();
 
+  const getChatHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    return {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      Authorization: `Bearer ${accessToken}`,
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    };
+  };
+
+  const getResponseError = async (resp: Response) => {
+    const contentType = resp.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const errData = await resp.json().catch(() => ({}));
+      return errData.error || errData.details || `Error ${resp.status}`;
+    }
+
+    const errorText = await resp.text().catch(() => '');
+    return errorText || `Error ${resp.status}`;
+  };
+
+  const getReadableErrorMessage = (error: unknown) => {
+    if (error instanceof Error) {
+      if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
+        return CHAT_ERROR_MESSAGE;
+      }
+
+      return error.message;
+    }
+
+    return CHAT_ERROR_MESSAGE;
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || loading || isOutOfTokens) return;
     const userMsg: Message = { role: 'user', content: input.trim() };
@@ -153,10 +191,7 @@ export function AIChatbot() {
     try {
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers: await getChatHeaders(),
         body: JSON.stringify({
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
           system: buildSystemPrompt(state.tasks, state.timetable),
@@ -164,8 +199,7 @@ export function AIChatbot() {
       });
 
       if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        throw new Error(errData.error || `Error ${resp.status}`);
+        throw new Error(await getResponseError(resp));
       }
 
       if (!resp.body) throw new Error('No response stream');
@@ -173,6 +207,7 @@ export function AIChatbot() {
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let textBuffer = '';
+      let streamDone = false;
 
       const upsertAssistant = (content: string) => {
         assistantContent = content;
@@ -186,48 +221,73 @@ export function AIChatbot() {
         });
       };
 
-      while (true) {
+      const handleSseEvent = (eventBlock: string) => {
+        const payload = eventBlock
+          .split('\n')
+          .map(line => line.trimEnd())
+          .filter(line => line.startsWith('data:'))
+          .map(line => line.slice(5).trimStart())
+          .join('\n')
+          .trim();
+
+        if (!payload) return;
+        if (payload === '[DONE]') {
+          streamDone = true;
+          return;
+        }
+
+        const parsed = JSON.parse(payload);
+        const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+        if (delta) upsertAssistant(assistantContent + delta);
+
+        const usage = parsed.usage;
+        if (usage) {
+          const totalTokens = (usage.prompt_tokens || usage.input_tokens || 0) + (usage.completion_tokens || usage.output_tokens || 0);
+          if (totalTokens > 0) {
+            dispatch({ type: 'ADD_AI_TOKENS', amount: totalTokens });
+          }
+        }
+      };
+
+      while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
         textBuffer += decoder.decode(value, { stream: true });
 
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (delta) upsertAssistant(assistantContent + delta);
+        const events = textBuffer.split(/\n\n/);
+        textBuffer = events.pop() ?? '';
 
-            // Extract token usage from the final chunk
-            const usage = parsed.usage;
-            if (usage) {
-              const totalTokens = (usage.prompt_tokens || 0) + (usage.completion_tokens || 0);
-              if (totalTokens > 0) {
-                dispatch({ type: 'ADD_AI_TOKENS', amount: totalTokens });
-              }
-            }
+        for (const eventBlock of events) {
+          const trimmed = eventBlock.trim();
+          if (!trimmed || trimmed.startsWith(':')) continue;
+
+          try {
+            handleSseEvent(trimmed);
           } catch {
-            textBuffer = line + '\n' + textBuffer;
+            textBuffer = `${eventBlock}\n\n${textBuffer}`;
             break;
           }
+        }
+      }
+
+      const remainingEvent = textBuffer.trim();
+      if (remainingEvent && !streamDone) {
+        try {
+          handleSseEvent(remainingEvent);
+        } catch {
+          // ignore incomplete trailing chunks
         }
       }
 
       // Execute any actions from the full response
       parseAndExecuteAction(assistantContent);
     } catch (e: any) {
-      const errorMsg = e?.message || 'Something went wrong — try again.';
+      const errorMsg = getReadableErrorMessage(e);
       toast.error(errorMsg);
       setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ ${errorMsg}` }]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
