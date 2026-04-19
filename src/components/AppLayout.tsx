@@ -2,7 +2,6 @@ import { ReactNode } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { useGame } from '@/context/GameContext';
-import { AIChatbot } from '@/components/AIChatbot';
 import { NotificationBell } from '@/components/NotificationBell';
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -42,7 +41,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
-      <AIChatbot />
     </SidebarProvider>
   );
 }
