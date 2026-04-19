@@ -1,6 +1,9 @@
 import { useGame } from '@/context/GameContext';
 import { motion } from 'framer-motion';
 import { CheckSquare, Flame, Coins, TrendingUp, Zap } from 'lucide-react';
+import { DailyQuests } from '@/components/dashboard/DailyQuests';
+import { TodaySchedule } from '@/components/dashboard/TodaySchedule';
+import { StudyHeatmap } from '@/components/dashboard/StudyHeatmap';
 
 const container = {
   hidden: { opacity: 0 },
@@ -73,6 +76,17 @@ export default function Dashboard() {
           />
         </div>
         <p className="text-xs text-muted-foreground mt-2">{state.xp} total XP earned</p>
+      </motion.div>
+
+      {/* Schedule + Quests */}
+      <motion.div variants={item} className="grid md:grid-cols-2 gap-4">
+        <TodaySchedule />
+        <DailyQuests />
+      </motion.div>
+
+      {/* Activity heatmap */}
+      <motion.div variants={item}>
+        <StudyHeatmap />
       </motion.div>
 
       {/* Today's Progress */}
