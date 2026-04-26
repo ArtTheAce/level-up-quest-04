@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { ReminderPicker } from '@/components/ReminderPicker';
 
 const SUBJECT_OPTIONS: { value: SubjectColor; label: string }[] = [
   { value: 'math', label: 'Math' },
@@ -244,6 +245,9 @@ export default function Tasks() {
                       }`}>
                         🗓️ Due: {formatDeadline(task.deadline)}
                       </span>
+                    )}
+                    {task.deadline && !task.completed && (
+                      <ReminderPicker itemId={task.id} kind="task" />
                     )}
                   </div>
                 </div>
