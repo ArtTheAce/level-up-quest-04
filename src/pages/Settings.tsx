@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { motion } from 'framer-motion';
@@ -6,7 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Eye, LogOut } from 'lucide-react';
+import { Settings as SettingsIcon, Eye, LogOut, Bell } from 'lucide-react';
+import {
+  loadSettings,
+  saveSettings,
+  ensurePushPermission,
+  playBeep,
+  LEAD_OPTIONS,
+  type NotificationSettings,
+} from '@/lib/notificationSettings';
 
 export default function Settings() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -17,6 +25,36 @@ export default function Settings() {
   const [showTasks, setShowTasks] = useState(profile?.show_tasks_completed ?? true);
   const [showBadges, setShowBadges] = useState(profile?.show_badges ?? true);
   const [saving, setSaving] = useState(false);
+
+  // Notification settings (localStorage-backed)
+  const [notif, setNotif] = useState<NotificationSettings>(loadSettings());
+  const [pushPerm, setPushPerm] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  );
+
+  useEffect(() => {
+    saveSettings(notif);
+  }, [notif]);
+
+  const requestPush = async () => {
+    const ok = await ensurePushPermission();
+    setPushPerm(Notification.permission);
+    if (ok) {
+      setNotif(n => ({ ...n, push: true }));
+      toast.success('Push notifications enabled 🔔');
+    } else {
+      toast.error('Permission denied. Enable in browser settings.');
+    }
+  };
+
+  const toggleTaskLead = (val: number) => {
+    setNotif(n => ({
+      ...n,
+      taskLeads: n.taskLeads.includes(val)
+        ? n.taskLeads.filter(l => l !== val)
+        : [...n.taskLeads, val].sort((a, b) => b - a),
+    }));
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -93,6 +131,99 @@ export default function Settings() {
           <LogOut className="h-4 w-4 mr-2" /> Log Out
         </Button>
       </div>
+
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 space-y-5">
+        <div>
+          <h2 className="font-display font-bold text-lg flex items-center gap-2">
+            <Bell className="h-5 w-5" /> Notifications
+          </h2>
+          <p className="text-xs text-muted-foreground mt-1">Smart reminders for tasks and classes</p>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Enable reminders</p>
+            <p className="text-xs text-muted-foreground">Master switch for all notifications</p>
+          </div>
+          <Switch checked={notif.enabled} onCheckedChange={v => setNotif(n => ({ ...n, enabled: v }))} />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Sound alerts 🔔</p>
+            <p className="text-xs text-muted-foreground">Play a chime when reminders fire</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={playBeep} className="text-xs text-muted-foreground hover:text-foreground underline">
+              Test
+            </button>
+            <Switch checked={notif.sound} onCheckedChange={v => setNotif(n => ({ ...n, sound: v }))} />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Browser push notifications</p>
+            <p className="text-xs text-muted-foreground">
+              {pushPerm === 'granted' ? '✓ Permission granted' :
+               pushPerm === 'denied' ? '✗ Blocked in browser' : 'Not yet requested'}
+            </p>
+          </div>
+          {pushPerm !== 'granted' ? (
+            <Button size="sm" variant="outline" onClick={requestPush} disabled={pushPerm === 'denied'}>
+              Enable
+            </Button>
+          ) : (
+            <Switch checked={notif.push} onCheckedChange={v => setNotif(n => ({ ...n, push: v }))} />
+          )}
+        </div>
+
+        <div className="border-t border-border pt-4 space-y-3">
+          <div>
+            <p className="text-sm font-medium">Class reminder lead time</p>
+            <p className="text-xs text-muted-foreground mb-2">When to alert before scheduled classes</p>
+            <div className="flex flex-wrap gap-1">
+              {[5, 10, 15, 30, 60].map(v => (
+                <button
+                  key={v}
+                  onClick={() => setNotif(n => ({ ...n, classLead: v }))}
+                  className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                    notif.classLead === v
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted border-border hover:bg-secondary'
+                  }`}
+                >
+                  {v} min
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium">Task deadline reminders</p>
+            <p className="text-xs text-muted-foreground mb-2">Pick one or more lead times for task deadlines</p>
+            <div className="flex flex-wrap gap-1">
+              {LEAD_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => toggleTaskLead(opt.value)}
+                  className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                    notif.taskLeads.includes(opt.value)
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted border-border hover:bg-secondary'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground border-t border-border pt-3">
+          💡 You can also customise reminders per-task and per-class using the bell icon next to each item.
+        </p>
+      </motion.div>
     </div>
   );
 }
