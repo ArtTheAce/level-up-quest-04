@@ -3,12 +3,14 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { useGame } from '@/context/GameContext';
 import { NotificationBell } from '@/components/NotificationBell';
+import { NotificationScheduler } from '@/hooks/useNotificationScheduler';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { state, dispatch } = useGame();
 
   return (
     <SidebarProvider>
+      <NotificationScheduler />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">

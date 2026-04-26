@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ReminderPicker } from '@/components/ReminderPicker';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
@@ -216,6 +217,9 @@ export default function Timetable() {
                         >
                           <span className="font-bold leading-tight block truncate">{entry.subject}</span>
                           <span className="opacity-85 text-[10px]">{entry.startTime}–{entry.endTime}</span>
+                          <div className="mt-1" onClick={e => e.stopPropagation()}>
+                            <ReminderPicker itemId={entry.id} kind="class" />
+                          </div>
                           <button
                             onClick={() => dispatch({ type: 'DELETE_TIMETABLE_ENTRY', entryId: entry.id })}
                             className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-full p-0.5"
