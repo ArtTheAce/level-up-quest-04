@@ -141,19 +141,11 @@ export default function Friends() {
 
   const acceptRequest = async (requestId: string, fromUserId: string) => {
     if (!user) return;
-    const { error: updateErr } = await supabase
-      .from('friend_requests')
-      .update({ status: 'accepted' })
-      .eq('id', requestId);
-
-    if (updateErr) { toast.error('Failed to accept'); return; }
-
-    // Create bidirectional friendship
-    await supabase.from('friendships').insert([
-      { user_id: user.id, friend_id: fromUserId },
-      { user_id: fromUserId, friend_id: user.id },
-    ]);
-
+    const { error } = await supabase.rpc('accept_friend_request', { _request_id: requestId });
+    if (error) {
+      toast.error('Failed to accept');
+      return;
+    }
     toast.success('Friend added! 🎉');
     fetchFriends();
     fetchRequests();
