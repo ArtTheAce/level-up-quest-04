@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGame, type Task, type Priority, type SubjectColor } from '@/context/GameContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, CheckCircle2, Circle, ArrowUpDown, CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, Circle, ArrowUpDown, CalendarIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,16 +11,18 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ReminderPicker } from '@/components/ReminderPicker';
 
-const SUBJECT_OPTIONS: { value: SubjectColor; label: string }[] = [
-  { value: 'math', label: 'Math' },
-  { value: 'physics', label: 'Physics' },
-  { value: 'chemistry', label: 'Chemistry' },
-  { value: 'english', label: 'English' },
-  { value: 'history', label: 'Economics' },
-  { value: 'art', label: 'Spanish' },
-  { value: 'music', label: 'Music' },
-  { value: 'other', label: 'Other' },
-];
+const SAVED_SUBJECTS_KEY = 'questify.savedSubjects';
+
+function loadSavedSubjects(): string[] {
+  try {
+    const raw = localStorage.getItem(SAVED_SUBJECTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((s) => typeof s === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; class: string; xp: number; weight: number }> = {
   easy: { label: 'Easy', class: 'bg-easy/15 text-easy border-easy/30', xp: 10, weight: 1 },
@@ -47,11 +49,33 @@ export default function Tasks() {
   const { state, dispatch } = useGame();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
-  const [subject, setSubject] = useState<SubjectColor | ''>('');
+  const [subject, setSubject] = useState<string>('');
+  const [savedSubjects, setSavedSubjects] = useState<string[]>(() => loadSavedSubjects());
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [deadlineDate, setDeadlineDate] = useState<Date | undefined>();
   const [deadlineTime, setDeadlineTime] = useState('23:59');
   const [sorted, setSorted] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SAVED_SUBJECTS_KEY, JSON.stringify(savedSubjects));
+    } catch {
+      // ignore
+    }
+  }, [savedSubjects]);
+
+  const persistSubject = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setSavedSubjects((prev) =>
+      prev.some((s) => s.toLowerCase() === trimmed.toLowerCase()) ? prev : [...prev, trimmed]
+    );
+  };
+
+  const removeSavedSubject = (name: string) => {
+    setSavedSubjects((prev) => prev.filter((s) => s !== name));
+    if (subject === name) setSubject('');
+  };
 
   const addTask = () => {
     if (!title.trim()) return;
@@ -62,13 +86,15 @@ export default function Tasks() {
       d.setHours(h, m, 0, 0);
       deadline = d.toISOString();
     }
+    const subjectName = subject.trim();
+    if (subjectName) persistSubject(subjectName);
     const task: Task = {
       id: crypto.randomUUID(),
       title: title.trim(),
       completed: false,
       priority,
-      subject: subject ? SUBJECT_OPTIONS.find(s => s.value === subject)?.label : undefined,
-      subjectColor: subject || undefined,
+      subject: subjectName || undefined,
+      subjectColor: subjectName ? 'other' : undefined,
       deadline,
       createdAt: new Date().toISOString(),
     };
@@ -76,6 +102,7 @@ export default function Tasks() {
     setTitle('');
     setDeadlineDate(undefined);
     setDeadlineTime('23:59');
+    setSubject('');
   };
 
   let filtered = state.tasks.filter(t => {
@@ -129,16 +156,19 @@ export default function Tasks() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={subject} onValueChange={(v) => setSubject(v as SubjectColor)}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Subject" />
-            </SelectTrigger>
-            <SelectContent>
-              {SUBJECT_OPTIONS.map(s => (
-                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            placeholder="Subject (optional)"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            onBlur={() => subject.trim() && persistSubject(subject)}
+            className="w-40"
+            list="saved-subjects"
+          />
+          <datalist id="saved-subjects">
+            {savedSubjects.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("w-44 justify-start text-left font-normal", !deadlineDate && "text-muted-foreground")}>
@@ -171,6 +201,33 @@ export default function Tasks() {
             </Button>
           )}
         </div>
+        {savedSubjects.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap pt-1">
+            <span className="text-xs text-muted-foreground self-center mr-1">Saved:</span>
+            {savedSubjects.map((s) => (
+              <span
+                key={s}
+                className={cn(
+                  'group/chip inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border cursor-pointer transition-colors',
+                  subject === s
+                    ? 'bg-primary/15 text-primary border-primary/30'
+                    : 'bg-muted text-muted-foreground border-transparent hover:bg-secondary'
+                )}
+                onClick={() => setSubject(s)}
+              >
+                {s}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); removeSavedSubject(s); }}
+                  className="opacity-50 hover:opacity-100"
+                  aria-label={`Remove ${s}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Filter + Auto-sort */}
