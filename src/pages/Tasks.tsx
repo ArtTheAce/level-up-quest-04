@@ -12,6 +12,22 @@ import { format } from 'date-fns';
 import { ReminderPicker } from '@/components/ReminderPicker';
 import { setTaskLink, getLinkedEntryId, subscribeTaskLinks } from '@/lib/taskLinks';
 import { Link2, Link2Off } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  setTaskDuration,
+  findConflicts,
+  dayName,
+  type Conflict,
+} from '@/lib/taskSchedule';
 
 const SAVED_SUBJECTS_KEY = 'questify.savedSubjects';
 
@@ -59,6 +75,14 @@ export default function Tasks() {
   const [sorted, setSorted] = useState(false);
   const [linkEntryId, setLinkEntryId] = useState<string>('');
   const [linkTick, setLinkTick] = useState(0);
+  const [duration, setDuration] = useState<number>(30);
+  const [conflictDialog, setConflictDialog] = useState<{
+    open: boolean;
+    conflicts: Conflict[];
+    pendingTask: Task | null;
+    pendingLinkId: string;
+    pendingDuration: number;
+  }>({ open: false, conflicts: [], pendingTask: null, pendingLinkId: '', pendingDuration: 30 });
 
   useEffect(() => subscribeTaskLinks(() => setLinkTick((t) => t + 1)), []);
 
@@ -83,6 +107,18 @@ export default function Tasks() {
     if (subject === name) setSubject('');
   };
 
+  const commitTask = (task: Task, linkId: string, dur: number) => {
+    setTaskDuration(task.id, dur);
+    dispatch({ type: 'ADD_TASK', task });
+    if (linkId) setTaskLink(task.id, linkId);
+    setTitle('');
+    setDeadlineDate(undefined);
+    setDeadlineTime('23:59');
+    setSubject('');
+    setLinkEntryId('');
+    setDuration(30);
+  };
+
   const addTask = () => {
     if (!title.trim()) return;
     let deadline: string | undefined;
@@ -105,13 +141,32 @@ export default function Tasks() {
       deadline,
       createdAt: new Date().toISOString(),
     };
-    dispatch({ type: 'ADD_TASK', task });
-    if (linkEntryId) setTaskLink(newId, linkEntryId);
-    setTitle('');
-    setDeadlineDate(undefined);
-    setDeadlineTime('23:59');
-    setSubject('');
-    setLinkEntryId('');
+
+    // If the task has a deadline, check for conflicts on the timetable
+    if (deadline) {
+      const d = new Date(deadline);
+      const day = (d.getDay() + 6) % 7;
+      const startMinutes = d.getHours() * 60 + d.getMinutes();
+      const endMinutes = Math.min(24 * 60, startMinutes + duration);
+      const conflicts = findConflicts(
+        { day, startMinutes, endMinutes },
+        state.timetable,
+        state.tasks,
+        newId
+      );
+      if (conflicts.length > 0) {
+        setConflictDialog({
+          open: true,
+          conflicts,
+          pendingTask: task,
+          pendingLinkId: linkEntryId,
+          pendingDuration: duration,
+        });
+        return;
+      }
+    }
+
+    commitTask(task, linkEntryId, duration);
   };
 
   let filtered = state.tasks.filter(t => {
@@ -223,6 +278,20 @@ export default function Tasks() {
                 ))}
               </SelectContent>
             </Select>
+          )}
+          {deadlineDate && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">Duration</span>
+              <Input
+                type="number"
+                min={5}
+                step={5}
+                value={duration}
+                onChange={(e) => setDuration(Math.max(5, parseInt(e.target.value) || 30))}
+                className="w-20"
+              />
+              <span className="text-xs text-muted-foreground">min</span>
+            </div>
           )}
         </div>
         {savedSubjects.length > 0 && (
@@ -389,6 +458,61 @@ export default function Tasks() {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        open={conflictDialog.open}
+        onOpenChange={(o) => setConflictDialog((s) => ({ ...s, open: o }))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>⚠️ Schedule conflict</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  This task overlaps with {conflictDialog.conflicts.length} item
+                  {conflictDialog.conflicts.length === 1 ? '' : 's'} already on your timetable:
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  {conflictDialog.conflicts.map((c, i) => (
+                    <li key={i}>
+                      <span className="font-medium">
+                        {c.kind === 'class' ? '📚' : '📝'} {c.label}
+                      </span>{' '}
+                      <span className="text-muted-foreground">
+                        — {dayName(c.day)} {c.startHHMM}–{c.endHHMM}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="pt-2">Add it anyway?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() =>
+                setConflictDialog({ open: false, conflicts: [], pendingTask: null, pendingLinkId: '', pendingDuration: 30 })
+              }
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (conflictDialog.pendingTask) {
+                  commitTask(
+                    conflictDialog.pendingTask,
+                    conflictDialog.pendingLinkId,
+                    conflictDialog.pendingDuration
+                  );
+                }
+                setConflictDialog({ open: false, conflicts: [], pendingTask: null, pendingLinkId: '', pendingDuration: 30 });
+              }}
+            >
+              Add anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

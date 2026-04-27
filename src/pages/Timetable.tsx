@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ReminderPicker } from '@/components/ReminderPicker';
 import { getTasksForEntry, subscribeTaskLinks, setTaskLink } from '@/lib/taskLinks';
+import { getTaskWindow, subscribeTaskDurations } from '@/lib/taskSchedule';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
@@ -47,6 +48,7 @@ export default function Timetable() {
   const [open, setOpen] = useState(false);
   const [, setLinkTick] = useState(0);
   useEffect(() => subscribeTaskLinks(() => setLinkTick((t) => t + 1)), []);
+  useEffect(() => subscribeTaskDurations(() => setLinkTick((t) => t + 1)), []);
   const [form, setForm] = useState({
     subject: '',
     colour: COLOUR_PALETTE[0].hex,
@@ -82,6 +84,21 @@ export default function Timetable() {
 
   const getBlockHeight = (entry: TimetableEntry) =>
     parseInt(entry.endTime.split(':')[0]) - parseInt(entry.startTime.split(':')[0]);
+
+  // Tasks with a deadline → render as scheduled blocks on the grid.
+  const scheduledTasks = state.tasks
+    .map((t) => ({ task: t, win: getTaskWindow(t) }))
+    .filter((x) => x.win !== null) as { task: typeof state.tasks[number]; win: NonNullable<ReturnType<typeof getTaskWindow>> }[];
+
+  const getTasksForDayHour = (day: number, hour: number) =>
+    scheduledTasks.filter(({ win }) => {
+      const startH = Math.floor(win.startMinutes / 60);
+      const endH = Math.ceil(win.endMinutes / 60);
+      return win.day === day && hour >= startH && hour < endH;
+    });
+
+  const isTaskStart = (winStart: number, hour: number) =>
+    Math.floor(winStart / 60) === hour;
 
   // Unique subjects for legend
   const uniqueSubjects = [...new Map(state.timetable.map(e => [e.subject, e])).values()];
@@ -204,6 +221,7 @@ export default function Timetable() {
               </div>
               {DAYS.map((_, dayIdx) => {
                 const entries = getEntriesForDayHour(dayIdx, hour);
+                const taskBlocks = getTasksForDayHour(dayIdx, hour);
                 return (
                   <div key={dayIdx} className="p-0.5 relative">
                     {entries.map(entry =>
@@ -266,6 +284,38 @@ export default function Timetable() {
                           >
                             <X className="h-3 w-3" />
                           </button>
+                        </motion.div>
+                      ) : null
+                    )}
+                    {taskBlocks.map(({ task, win }) =>
+                      isTaskStart(win.startMinutes, hour) ? (
+                        <motion.div
+                          key={`task-${task.id}`}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className={`rounded-lg p-2 text-xs font-medium relative group cursor-default text-white overflow-hidden border-2 border-dashed border-white/40 mt-0.5 ${task.completed ? 'opacity-60' : ''}`}
+                          style={{
+                            backgroundColor: '#0ea5e9',
+                            height: `${Math.max(1, Math.ceil((win.endMinutes - win.startMinutes) / 60)) * 52 - 4}px`,
+                          }}
+                        >
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => dispatch({ type: 'TOGGLE_TASK', taskId: task.id })}
+                              className="shrink-0"
+                              aria-label="Toggle task"
+                            >
+                              {task.completed
+                                ? <CheckCircle2 className="h-3 w-3" />
+                                : <Circle className="h-3 w-3" />}
+                            </button>
+                            <span className={`font-bold leading-tight truncate ${task.completed ? 'line-through' : ''}`}>
+                              📝 {task.title}
+                            </span>
+                          </div>
+                          <span className="opacity-85 text-[10px] block">
+                            {win.startHHMM}–{win.endHHMM}
+                          </span>
                         </motion.div>
                       ) : null
                     )}
