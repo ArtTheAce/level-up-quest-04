@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ReminderPicker } from '@/components/ReminderPicker';
 import { getTasksForEntry, subscribeTaskLinks, setTaskLink } from '@/lib/taskLinks';
+import { getTaskWindow, subscribeTaskDurations } from '@/lib/taskSchedule';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
@@ -47,6 +48,7 @@ export default function Timetable() {
   const [open, setOpen] = useState(false);
   const [, setLinkTick] = useState(0);
   useEffect(() => subscribeTaskLinks(() => setLinkTick((t) => t + 1)), []);
+  useEffect(() => subscribeTaskDurations(() => setLinkTick((t) => t + 1)), []);
   const [form, setForm] = useState({
     subject: '',
     colour: COLOUR_PALETTE[0].hex,
@@ -82,6 +84,21 @@ export default function Timetable() {
 
   const getBlockHeight = (entry: TimetableEntry) =>
     parseInt(entry.endTime.split(':')[0]) - parseInt(entry.startTime.split(':')[0]);
+
+  // Tasks with a deadline → render as scheduled blocks on the grid.
+  const scheduledTasks = state.tasks
+    .map((t) => ({ task: t, win: getTaskWindow(t) }))
+    .filter((x) => x.win !== null) as { task: typeof state.tasks[number]; win: NonNullable<ReturnType<typeof getTaskWindow>> }[];
+
+  const getTasksForDayHour = (day: number, hour: number) =>
+    scheduledTasks.filter(({ win }) => {
+      const startH = Math.floor(win.startMinutes / 60);
+      const endH = Math.ceil(win.endMinutes / 60);
+      return win.day === day && hour >= startH && hour < endH;
+    });
+
+  const isTaskStart = (winStart: number, hour: number) =>
+    Math.floor(winStart / 60) === hour;
 
   // Unique subjects for legend
   const uniqueSubjects = [...new Map(state.timetable.map(e => [e.subject, e])).values()];
