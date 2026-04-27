@@ -458,6 +458,61 @@ export default function Tasks() {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        open={conflictDialog.open}
+        onOpenChange={(o) => setConflictDialog((s) => ({ ...s, open: o }))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>⚠️ Schedule conflict</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  This task overlaps with {conflictDialog.conflicts.length} item
+                  {conflictDialog.conflicts.length === 1 ? '' : 's'} already on your timetable:
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  {conflictDialog.conflicts.map((c, i) => (
+                    <li key={i}>
+                      <span className="font-medium">
+                        {c.kind === 'class' ? '📚' : '📝'} {c.label}
+                      </span>{' '}
+                      <span className="text-muted-foreground">
+                        — {dayName(c.day)} {c.startHHMM}–{c.endHHMM}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="pt-2">Add it anyway?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() =>
+                setConflictDialog({ open: false, conflicts: [], pendingTask: null, pendingLinkId: '', pendingDuration: 30 })
+              }
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (conflictDialog.pendingTask) {
+                  commitTask(
+                    conflictDialog.pendingTask,
+                    conflictDialog.pendingLinkId,
+                    conflictDialog.pendingDuration
+                  );
+                }
+                setConflictDialog({ open: false, conflicts: [], pendingTask: null, pendingLinkId: '', pendingDuration: 30 });
+              }}
+            >
+              Add anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
