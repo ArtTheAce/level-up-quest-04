@@ -221,6 +221,7 @@ export default function Timetable() {
               </div>
               {DAYS.map((_, dayIdx) => {
                 const entries = getEntriesForDayHour(dayIdx, hour);
+                const taskBlocks = getTasksForDayHour(dayIdx, hour);
                 return (
                   <div key={dayIdx} className="p-0.5 relative">
                     {entries.map(entry =>
@@ -283,6 +284,38 @@ export default function Timetable() {
                           >
                             <X className="h-3 w-3" />
                           </button>
+                        </motion.div>
+                      ) : null
+                    )}
+                    {taskBlocks.map(({ task, win }) =>
+                      isTaskStart(win.startMinutes, hour) ? (
+                        <motion.div
+                          key={`task-${task.id}`}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className={`rounded-lg p-2 text-xs font-medium relative group cursor-default text-white overflow-hidden border-2 border-dashed border-white/40 mt-0.5 ${task.completed ? 'opacity-60' : ''}`}
+                          style={{
+                            backgroundColor: '#0ea5e9',
+                            height: `${Math.max(1, Math.ceil((win.endMinutes - win.startMinutes) / 60)) * 52 - 4}px`,
+                          }}
+                        >
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => dispatch({ type: 'TOGGLE_TASK', taskId: task.id })}
+                              className="shrink-0"
+                              aria-label="Toggle task"
+                            >
+                              {task.completed
+                                ? <CheckCircle2 className="h-3 w-3" />
+                                : <Circle className="h-3 w-3" />}
+                            </button>
+                            <span className={`font-bold leading-tight truncate ${task.completed ? 'line-through' : ''}`}>
+                              📝 {task.title}
+                            </span>
+                          </div>
+                          <span className="opacity-85 text-[10px] block">
+                            {win.startHHMM}–{win.endHHMM}
+                          </span>
                         </motion.div>
                       ) : null
                     )}
