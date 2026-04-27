@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGame, type TimetableEntry } from '@/context/GameContext';
 import { motion } from 'framer-motion';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ReminderPicker } from '@/components/ReminderPicker';
+import { getTasksForEntry, subscribeTaskLinks, setTaskLink } from '@/lib/taskLinks';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
@@ -44,6 +45,8 @@ function getBlockColour(entry: TimetableEntry): string {
 export default function Timetable() {
   const { state, dispatch } = useGame();
   const [open, setOpen] = useState(false);
+  const [, setLinkTick] = useState(0);
+  useEffect(() => subscribeTaskLinks(() => setLinkTick((t) => t + 1)), []);
   const [form, setForm] = useState({
     subject: '',
     colour: COLOUR_PALETTE[0].hex,
@@ -209,7 +212,7 @@ export default function Timetable() {
                           key={entry.id}
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className="rounded-lg p-2 text-xs font-medium relative group cursor-default text-white"
+                          className="rounded-lg p-2 text-xs font-medium relative group cursor-default text-white overflow-hidden"
                           style={{
                             backgroundColor: getBlockColour(entry),
                             height: `${getBlockHeight(entry) * 52 - 4}px`,
@@ -217,6 +220,43 @@ export default function Timetable() {
                         >
                           <span className="font-bold leading-tight block truncate">{entry.subject}</span>
                           <span className="opacity-85 text-[10px]">{entry.startTime}–{entry.endTime}</span>
+                          {(() => {
+                            const linkedIds = getTasksForEntry(entry.id);
+                            const linkedTasks = state.tasks.filter((t) => linkedIds.includes(t.id));
+                            if (linkedTasks.length === 0) return null;
+                            return (
+                              <div className="mt-1 space-y-0.5">
+                                {linkedTasks.slice(0, 4).map((t) => (
+                                  <div key={t.id} className="flex items-center gap-1 text-[10px] bg-black/20 rounded px-1 py-0.5">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        dispatch({ type: 'TOGGLE_TASK', taskId: t.id });
+                                      }}
+                                      className="shrink-0"
+                                    >
+                                      {t.completed
+                                        ? <CheckCircle2 className="h-2.5 w-2.5" />
+                                        : <Circle className="h-2.5 w-2.5" />}
+                                    </button>
+                                    <span className={`truncate flex-1 ${t.completed ? 'line-through opacity-70' : ''}`}>
+                                      {t.title}
+                                    </span>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setTaskLink(t.id, null); }}
+                                      className="opacity-0 group-hover:opacity-70 hover:opacity-100"
+                                      aria-label="Unlink"
+                                    >
+                                      <X className="h-2.5 w-2.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                                {linkedTasks.length > 4 && (
+                                  <div className="text-[9px] opacity-80">+{linkedTasks.length - 4} more</div>
+                                )}
+                              </div>
+                            );
+                          })()}
                           <div className="mt-1" onClick={e => e.stopPropagation()}>
                             <ReminderPicker itemId={entry.id} kind="class" />
                           </div>

@@ -10,6 +10,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ReminderPicker } from '@/components/ReminderPicker';
+import { setTaskLink, getLinkedEntryId, subscribeTaskLinks } from '@/lib/taskLinks';
+import { Link2, Link2Off } from 'lucide-react';
 
 const SAVED_SUBJECTS_KEY = 'questify.savedSubjects';
 
@@ -55,6 +57,10 @@ export default function Tasks() {
   const [deadlineDate, setDeadlineDate] = useState<Date | undefined>();
   const [deadlineTime, setDeadlineTime] = useState('23:59');
   const [sorted, setSorted] = useState(false);
+  const [linkEntryId, setLinkEntryId] = useState<string>('');
+  const [linkTick, setLinkTick] = useState(0);
+
+  useEffect(() => subscribeTaskLinks(() => setLinkTick((t) => t + 1)), []);
 
   useEffect(() => {
     try {
@@ -88,8 +94,9 @@ export default function Tasks() {
     }
     const subjectName = subject.trim();
     if (subjectName) persistSubject(subjectName);
+    const newId = crypto.randomUUID();
     const task: Task = {
-      id: crypto.randomUUID(),
+      id: newId,
       title: title.trim(),
       completed: false,
       priority,
@@ -99,10 +106,12 @@ export default function Tasks() {
       createdAt: new Date().toISOString(),
     };
     dispatch({ type: 'ADD_TASK', task });
+    if (linkEntryId) setTaskLink(newId, linkEntryId);
     setTitle('');
     setDeadlineDate(undefined);
     setDeadlineTime('23:59');
     setSubject('');
+    setLinkEntryId('');
   };
 
   let filtered = state.tasks.filter(t => {
@@ -200,6 +209,21 @@ export default function Tasks() {
               Clear
             </Button>
           )}
+          {state.timetable.length > 0 && (
+            <Select value={linkEntryId || 'none'} onValueChange={(v) => setLinkEntryId(v === 'none' ? '' : v)}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Link to class" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No class</SelectItem>
+                {state.timetable.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.subject} · {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][e.day]} {e.startTime}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         {savedSubjects.length > 0 && (
           <div className="flex gap-1.5 flex-wrap pt-1">
@@ -259,6 +283,9 @@ export default function Tasks() {
         <AnimatePresence mode="popLayout">
           {filtered.map(task => {
             const dlStatus = getDeadlineStatus(task.deadline);
+            const linkedId = getLinkedEntryId(task.id);
+            const linkedEntry = linkedId ? state.timetable.find((e) => e.id === linkedId) : undefined;
+            void linkTick;
             return (
               <motion.div
                 key={task.id}
@@ -305,6 +332,37 @@ export default function Tasks() {
                     )}
                     {task.deadline && !task.completed && (
                       <ReminderPicker itemId={task.id} kind="task" />
+                    )}
+                    {linkedEntry && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary inline-flex items-center gap-1">
+                        <Link2 className="h-3 w-3" />
+                        {linkedEntry.subject}
+                        <button
+                          onClick={() => setTaskLink(task.id, null)}
+                          className="ml-0.5 opacity-60 hover:opacity-100"
+                          aria-label="Unlink"
+                        >
+                          <Link2Off className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                    {!linkedEntry && state.timetable.length > 0 && !task.completed && (
+                      <Select
+                        value=""
+                        onValueChange={(v) => v && setTaskLink(task.id, v)}
+                      >
+                        <SelectTrigger className="h-6 w-auto px-2 py-0 text-xs border-dashed gap-1">
+                          <Link2 className="h-3 w-3" />
+                          <span>Link class</span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {state.timetable.map((e) => (
+                            <SelectItem key={e.id} value={e.id}>
+                              {e.subject} · {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][e.day]} {e.startTime}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                   </div>
                 </div>
