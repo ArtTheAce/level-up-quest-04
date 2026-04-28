@@ -284,7 +284,11 @@ export function RivalryTab() {
               <Button variant="outline" className="flex-1" onClick={() => setModal(null)}>Cancel</Button>
               <Button
                 className="flex-1 bg-red-600 hover:bg-red-700"
-                disabled={loading || (modal !== 'curse_block' && modal !== 'all_in' && !selectedFriend && friends.length > 0)}
+                disabled={
+                  loading ||
+                  (modal !== 'curse_block' && modal !== 'all_in' &&
+                    (!selectedFriend || friends.length === 0))
+                }
                 onClick={() => execute(modal!, RIVALRY_ITEMS.find(r => r.action === modal)?.price || 0)}
               >
                 {loading ? 'Executing...' : 'Execute 🎯'}
