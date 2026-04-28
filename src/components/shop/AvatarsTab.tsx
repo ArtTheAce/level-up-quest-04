@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGame } from '@/context/GameContext';
+import { useGame, type ActiveBoost } from '@/context/GameContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,6 +13,7 @@ const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { st
 const cardVar = { hidden: { opacity: 0, y: 15, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1 } };
 
 type AuraType = 'flame' | 'ice' | 'lightning' | 'villain' | 'none';
+type BoostAura = Extract<ActiveBoost['type'], 'flame' | 'ice' | 'lightning' | 'villain'>;
 
 const RARE_TITLES = ['👁️ Watcher', '🐺 Lone Wolf', '💀 Untouchable', '⚡ Overachiever'];
 
@@ -72,13 +73,6 @@ export function AvatarsTab() {
   const activeAura: string = (state as any).activeAura || 'none';
   const activeTitle: string = (state as any).customTitle || '';
 
-  const saveAura = async (aura: AuraType) => {
-    if (!user) return;
-    await supabase.from('game_state').update({ active_boosts: state.activeBoosts as any } as any).eq('user_id', user.id);
-    // We store aura in the purchased_items list as a signal + dispatch
-    dispatch({ type: 'SET_AVATAR_AURA', aura } as any);
-  };
-
   const execute = async (itemId: string) => {
     const def = AVATAR_ITEMS.find(a => a.id === itemId);
     if (!def) return;
@@ -111,10 +105,30 @@ export function AvatarsTab() {
         setRevealItem(rolled);
         if (RARE_TITLES.includes(rolled)) {
           // Apply as title
-          dispatch({ type: 'SET_CUSTOM_TITLE', title: rolled } as any);
-          await supabase.from('profiles').update({ display_name: rolled }).eq('user_id', user?.id || '');
+          dispatch({ type: 'SET_CUSTOM_TITLE', title: rolled });
+          if (user) {
+            await supabase.from('profiles').update({ display_name: rolled }).eq('user_id', user.id);
+          }
         } else {
-          dispatch({ type: 'PURCHASE_ITEM', item: { id: rolled, name: rolled, description: '', icon: '', price: 0, category: 'powerup', oneTime: true } as any });
+          dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: rolled });
+          // If it's an aura, apply the aura too
+          const auraMap: Record<string, BoostAura> = {
+            flame_aura: 'flame',
+            ice_aura: 'ice',
+            lightning_frame: 'lightning',
+          };
+          if (auraMap[rolled]) {
+            dispatch({ type: 'ADD_TIMED_BOOST', boost: { type: auraMap[rolled] } });
+            dispatch({ type: 'SET_AVATAR_AURA', aura: auraMap[rolled] });
+          } else if (rolled === 'ghost_mode') {
+            dispatch({
+              type: 'ADD_TIMED_BOOST',
+              boost: {
+                type: 'ghost_mode',
+                expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+              },
+            });
+          }
         }
         toast.success(`You got: ${rolled}! 🎉`);
       }
@@ -130,12 +144,14 @@ export function AvatarsTab() {
 
     if (itemId === 'ghost_mode') {
       dispatch({ type: 'ADD_COINS', amount: -def.price });
-      await supabase.from('game_state').update({
-        active_boosts: [...(state.activeBoosts as any), {
+      dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: 'ghost_mode' });
+      dispatch({
+        type: 'ADD_TIMED_BOOST',
+        boost: {
           type: 'ghost_mode',
           expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
-        }] as any,
-      }).eq('user_id', user?.id || '');
+        },
+      });
       toast.success('👻 Ghost Mode active for 48hrs! Your rank shows as ??? to everyone.');
       setLoading(false);
       return;
@@ -143,7 +159,7 @@ export function AvatarsTab() {
 
     if (itemId === 'streak_crown') {
       dispatch({ type: 'ADD_COINS', amount: -def.price });
-      dispatch({ type: 'PURCHASE_ITEM', item: { id: 'streak_crown', name: 'Streak Crown', description: '', icon: '👑', price: 0, category: 'powerup', oneTime: true } as any });
+      dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: 'streak_crown' });
       toast.success('👑 Streak Crown purchased! It will appear above the player with the longest streak in your group.');
       setLoading(false);
       return;
@@ -151,14 +167,16 @@ export function AvatarsTab() {
 
     // Aura items
     if (def.auraKey) {
+      const auraKey = def.auraKey as BoostAura;
       dispatch({ type: 'ADD_COINS', amount: -def.price });
-      dispatch({ type: 'PURCHASE_ITEM', item: { id: itemId, name: def.name, description: '', icon: def.icon, price: 0, category: 'powerup', oneTime: true } as any });
-      // Store active aura in supabase
-      const currentBoosts = state.activeBoosts as any[];
-      const filteredBoosts = currentBoosts.filter((b: any) => !['flame_aura','ice_aura','lightning_frame','villain_arc'].includes(b.type));
-      await supabase.from('game_state').update({
-        active_boosts: [...filteredBoosts, { type: def.auraKey }] as any,
-      }).eq('user_id', user?.id || '');
+      dispatch({ type: 'ADD_PURCHASED_ITEM', itemId });
+      // Swap any existing aura for the new one (ADD_TIMED_BOOST already replaces same-type entries)
+      const auraTypes: BoostAura[] = ['flame', 'ice', 'lightning', 'villain'];
+      auraTypes.forEach(t => {
+        if (t !== auraKey) dispatch({ type: 'REMOVE_BOOST_TYPE', boostType: t });
+      });
+      dispatch({ type: 'ADD_TIMED_BOOST', boost: { type: auraKey } });
+      dispatch({ type: 'SET_AVATAR_AURA', aura: auraKey });
       toast.success(`${def.icon} ${def.name} applied to your avatar!`);
     }
 

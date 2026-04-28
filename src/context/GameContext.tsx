@@ -46,8 +46,22 @@ export interface ShopItem {
 }
 
 export interface ActiveBoost {
-  type: 'xp_2x' | 'coin_2x' | 'xp_3x';
-  remainingTasks: number;
+  type:
+    | 'xp_2x'
+    | 'coin_2x'
+    | 'xp_3x'
+    | 'leaderboard_freeze'
+    | 'vault'
+    | 'ghost_mode'
+    | 'flame'
+    | 'ice'
+    | 'lightning'
+    | 'villain'
+    | 'all_in';
+  remainingTasks?: number;
+  expiresAt?: string;
+  bet?: number;
+  taskId?: string;
 }
 
 interface GameState {
@@ -69,6 +83,8 @@ interface GameState {
   earnedBadges: string[];
   darkMode: boolean;
   aiTokensUsed: number;
+  activeAura: string | null;
+  customTitle: string | null;
   loaded: boolean;
 }
 
@@ -84,6 +100,11 @@ type Action =
   | { type: 'CHECK_STREAK' }
   | { type: 'UNLOCK_ACHIEVEMENT'; achievementId: string }
   | { type: 'PURCHASE_ITEM'; item: ShopItem }
+  | { type: 'ADD_PURCHASED_ITEM'; itemId: string }
+  | { type: 'ADD_TIMED_BOOST'; boost: ActiveBoost }
+  | { type: 'REMOVE_BOOST_TYPE'; boostType: ActiveBoost['type'] }
+  | { type: 'SET_AVATAR_AURA'; aura: string | null }
+  | { type: 'SET_CUSTOM_TITLE'; title: string | null }
   | { type: 'SET_THEME'; themeId: ThemeId }
   | { type: 'EQUIP_BADGE'; badgeId: string | null }
   | { type: 'ADD_FOCUS_SESSION' }
@@ -165,6 +186,8 @@ const initialState: GameState = {
   earnedBadges: [],
   darkMode: false,
   aiTokensUsed: 0,
+  activeAura: null,
+  customTitle: null,
   loaded: false,
 };
 
@@ -223,9 +246,9 @@ function gameReducer(state: GameState, action: Action): GameState {
       );
 
       if (!wasCompleted) {
-        const hasXp3x = state.activeBoosts.some(b => b.type === 'xp_3x' && b.remainingTasks > 0);
-        const hasXp2x = state.activeBoosts.some(b => b.type === 'xp_2x' && b.remainingTasks > 0);
-        const hasCoin2x = state.activeBoosts.some(b => b.type === 'coin_2x' && b.remainingTasks > 0);
+        const hasXp3x = state.activeBoosts.some(b => b.type === 'xp_3x' && (b.remainingTasks ?? 0) > 0);
+        const hasXp2x = state.activeBoosts.some(b => b.type === 'xp_2x' && (b.remainingTasks ?? 0) > 0);
+        const hasCoin2x = state.activeBoosts.some(b => b.type === 'coin_2x' && (b.remainingTasks ?? 0) > 0);
 
         const xpMultiplier = hasXp3x ? 3 : hasXp2x ? 2 : 1;
         const coinMultiplier = hasCoin2x ? 2 : 1;
@@ -235,9 +258,16 @@ function gameReducer(state: GameState, action: Action): GameState {
         const newXp = state.xp + xpGain;
         const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
 
+        const taskConsumingTypes: ActiveBoost['type'][] = ['xp_2x', 'xp_3x', 'coin_2x'];
         const newBoosts = state.activeBoosts
-          .map(b => ({ ...b, remainingTasks: b.remainingTasks - 1 }))
-          .filter(b => b.remainingTasks > 0);
+          .map(b =>
+            taskConsumingTypes.includes(b.type) && typeof b.remainingTasks === 'number'
+              ? { ...b, remainingTasks: b.remainingTasks - 1 }
+              : b,
+          )
+          .filter(b =>
+            taskConsumingTypes.includes(b.type) ? (b.remainingTasks ?? 0) > 0 : true,
+          );
 
         newState = {
           ...state,
@@ -350,6 +380,38 @@ function gameReducer(state: GameState, action: Action): GameState {
       newState = updatedState;
       break;
     }
+
+    case 'ADD_PURCHASED_ITEM': {
+      if (state.purchasedItems.includes(action.itemId)) {
+        newState = state;
+      } else {
+        newState = { ...state, purchasedItems: [...state.purchasedItems, action.itemId] };
+      }
+      break;
+    }
+
+    case 'ADD_TIMED_BOOST': {
+      // Remove any existing boost of the same type (aura swap, reapplying freeze, etc.)
+      const filtered = state.activeBoosts.filter(b => b.type !== action.boost.type);
+      newState = { ...state, activeBoosts: [...filtered, action.boost] };
+      break;
+    }
+
+    case 'REMOVE_BOOST_TYPE': {
+      newState = {
+        ...state,
+        activeBoosts: state.activeBoosts.filter(b => b.type !== action.boostType),
+      };
+      break;
+    }
+
+    case 'SET_AVATAR_AURA':
+      newState = { ...state, activeAura: action.aura };
+      break;
+
+    case 'SET_CUSTOM_TITLE':
+      newState = { ...state, customTitle: action.title };
+      break;
 
     case 'SET_THEME':
       newState = { ...state, activeTheme: action.themeId };

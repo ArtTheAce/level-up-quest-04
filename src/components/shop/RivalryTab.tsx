@@ -121,19 +121,18 @@ export function RivalryTab() {
         toast.success(`Silenced! 🔇 They won't hear any celebrations for 24hrs.`);
       } else if (action === 'curse_block') {
         // Mark curse_block as purchased (acts as inventory item)
-        dispatch({ type: 'ADD_COINS', amount: 0 }); // trigger state update
+        dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: 'curse_block' });
         toast.success('Curse Block active! 🛡️ Next curse sent to you will be deflected.');
       } else if (action === 'all_in') {
         const bet = parseInt(betAmount);
         if (!bet || bet <= 0 || bet > state.coins) { toast.error('Enter a valid bet amount.'); setLoading(false); return; }
         if (!betTaskId) { toast.error('Select a task to bet on.'); setLoading(false); return; }
         const expiresAt = new Date(Date.now() + parseInt(betHours) * 60 * 60 * 1000).toISOString();
-        await supabase.from('game_state').update({
-          active_boosts: [...(state.activeBoosts as any), {
-            type: 'all_in',
-            bet, taskId: betTaskId, expiresAt,
-          }] as any,
-        }).eq('user_id', user?.id);
+        dispatch({
+          type: 'ADD_TIMED_BOOST',
+          boost: { type: 'all_in', bet, taskId: betTaskId, expiresAt },
+        });
+        dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: 'all_in' });
         dispatch({ type: 'ADD_COINS', amount: -bet });
         toast.success(`🎰 All-In started! Complete your task in ${betHours}hrs to win ${bet * 2} coins!`);
         setModal(null);
@@ -142,12 +141,13 @@ export function RivalryTab() {
       }
 
       dispatch({ type: 'ADD_COINS', amount: -price });
-      // Mark as purchased so Villain Arc can unlock
-      if (!state.purchasedItems.includes(action)) {
-        dispatch({ type: 'PURCHASE_ITEM', item: { id: action, name: action, description: '', icon: '', price: 0, category: 'powerup' } as any });
-      }
+      // Mark as purchased so Villain Arc can unlock (doesn't deduct coins again)
+      dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: action });
       setModal(null);
-    } catch { toast.error('Something went wrong'); }
+    } catch (err) {
+      console.error('Rivalry action failed:', err);
+      toast.error('Something went wrong');
+    }
     setLoading(false);
   };
 
@@ -284,7 +284,11 @@ export function RivalryTab() {
               <Button variant="outline" className="flex-1" onClick={() => setModal(null)}>Cancel</Button>
               <Button
                 className="flex-1 bg-red-600 hover:bg-red-700"
-                disabled={loading || (modal !== 'curse_block' && modal !== 'all_in' && !selectedFriend && friends.length > 0)}
+                disabled={
+                  loading ||
+                  (modal !== 'curse_block' && modal !== 'all_in' &&
+                    (!selectedFriend || friends.length === 0))
+                }
                 onClick={() => execute(modal!, RIVALRY_ITEMS.find(r => r.action === modal)?.price || 0)}
               >
                 {loading ? 'Executing...' : 'Execute 🎯'}
