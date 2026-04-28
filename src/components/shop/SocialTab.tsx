@@ -210,7 +210,11 @@ export function SocialTab() {
               <Button variant="outline" className="flex-1" onClick={() => setModal(null)}>Cancel</Button>
               <Button
                 className="flex-1"
-                disabled={loading || (modal !== 'freeze' && modal !== 'vault' && !selectedFriend) || friends.length === 0 && modal !== 'freeze' && modal !== 'vault'}
+                disabled={
+                  loading ||
+                  (modal !== 'freeze' && modal !== 'vault' &&
+                    (!selectedFriend || friends.length === 0))
+                }
                 onClick={() => execute(modal!, SOCIAL_ITEMS.find(s => s.action === modal)?.price || 0)}
               >
                 {loading ? 'Sending...' : 'Confirm'}
