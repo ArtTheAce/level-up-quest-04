@@ -246,9 +246,9 @@ function gameReducer(state: GameState, action: Action): GameState {
       );
 
       if (!wasCompleted) {
-        const hasXp3x = state.activeBoosts.some(b => b.type === 'xp_3x' && b.remainingTasks > 0);
-        const hasXp2x = state.activeBoosts.some(b => b.type === 'xp_2x' && b.remainingTasks > 0);
-        const hasCoin2x = state.activeBoosts.some(b => b.type === 'coin_2x' && b.remainingTasks > 0);
+        const hasXp3x = state.activeBoosts.some(b => b.type === 'xp_3x' && (b.remainingTasks ?? 0) > 0);
+        const hasXp2x = state.activeBoosts.some(b => b.type === 'xp_2x' && (b.remainingTasks ?? 0) > 0);
+        const hasCoin2x = state.activeBoosts.some(b => b.type === 'coin_2x' && (b.remainingTasks ?? 0) > 0);
 
         const xpMultiplier = hasXp3x ? 3 : hasXp2x ? 2 : 1;
         const coinMultiplier = hasCoin2x ? 2 : 1;
@@ -258,9 +258,16 @@ function gameReducer(state: GameState, action: Action): GameState {
         const newXp = state.xp + xpGain;
         const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
 
+        const taskConsumingTypes: ActiveBoost['type'][] = ['xp_2x', 'xp_3x', 'coin_2x'];
         const newBoosts = state.activeBoosts
-          .map(b => ({ ...b, remainingTasks: b.remainingTasks - 1 }))
-          .filter(b => b.remainingTasks > 0);
+          .map(b =>
+            taskConsumingTypes.includes(b.type) && typeof b.remainingTasks === 'number'
+              ? { ...b, remainingTasks: b.remainingTasks - 1 }
+              : b,
+          )
+          .filter(b =>
+            taskConsumingTypes.includes(b.type) ? (b.remainingTasks ?? 0) > 0 : true,
+          );
 
         newState = {
           ...state,
