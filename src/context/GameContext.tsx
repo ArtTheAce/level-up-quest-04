@@ -186,6 +186,8 @@ const initialState: GameState = {
   earnedBadges: [],
   darkMode: false,
   aiTokensUsed: 0,
+  activeAura: null,
+  customTitle: null,
   loaded: false,
 };
 
