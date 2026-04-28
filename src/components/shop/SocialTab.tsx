@@ -88,14 +88,13 @@ export function SocialTab() {
         });
         toast.success('Callout pinned! 📢');
       } else if (action === 'freeze') {
-        // Store freeze in game_state extra data via supabase
-        await supabase.from('game_state').update({
-          active_boosts: [...(state.activeBoosts as any), {
+        dispatch({
+          type: 'ADD_TIMED_BOOST',
+          boost: {
             type: 'leaderboard_freeze',
             expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-            frozenRank: null, // will be set on first leaderboard render
-          }] as any,
-        }).eq('user_id', user?.id);
+          },
+        });
         toast.success('Leaderboard Freeze active for 24hrs! 🧊');
       } else if (action === 'bounty') {
         await sendNotification(selectedFriend, 'bounty', `🎯 ${name} placed a bounty on you! Complete your tasks or lose ${price} coins!`, {
@@ -114,19 +113,21 @@ export function SocialTab() {
         });
         toast.success('Duel request sent! ⚔️ Waiting for acceptance...');
       } else if (action === 'vault') {
-        await supabase.from('game_state').update({
-          active_boosts: [...(state.activeBoosts as any), {
+        dispatch({
+          type: 'ADD_TIMED_BOOST',
+          boost: {
             type: 'vault',
             expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
-          }] as any,
-        }).eq('user_id', user?.id);
+          },
+        });
         toast.success('Vault active for 48hrs! 🔒 Your coins are protected.');
       }
 
       // Deduct coins
       dispatch({ type: 'ADD_COINS', amount: -price });
       setModal(null);
-    } catch {
+    } catch (err) {
+      console.error('Shop social action failed:', err);
       toast.error('Something went wrong');
     }
     setLoading(false);
