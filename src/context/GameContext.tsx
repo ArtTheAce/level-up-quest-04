@@ -381,6 +381,38 @@ function gameReducer(state: GameState, action: Action): GameState {
       break;
     }
 
+    case 'ADD_PURCHASED_ITEM': {
+      if (state.purchasedItems.includes(action.itemId)) {
+        newState = state;
+      } else {
+        newState = { ...state, purchasedItems: [...state.purchasedItems, action.itemId] };
+      }
+      break;
+    }
+
+    case 'ADD_TIMED_BOOST': {
+      // Remove any existing boost of the same type (aura swap, reapplying freeze, etc.)
+      const filtered = state.activeBoosts.filter(b => b.type !== action.boost.type);
+      newState = { ...state, activeBoosts: [...filtered, action.boost] };
+      break;
+    }
+
+    case 'REMOVE_BOOST_TYPE': {
+      newState = {
+        ...state,
+        activeBoosts: state.activeBoosts.filter(b => b.type !== action.boostType),
+      };
+      break;
+    }
+
+    case 'SET_AVATAR_AURA':
+      newState = { ...state, activeAura: action.aura };
+      break;
+
+    case 'SET_CUSTOM_TITLE':
+      newState = { ...state, customTitle: action.title };
+      break;
+
     case 'SET_THEME':
       newState = { ...state, activeTheme: action.themeId };
       break;
