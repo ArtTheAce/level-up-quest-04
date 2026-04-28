@@ -46,8 +46,22 @@ export interface ShopItem {
 }
 
 export interface ActiveBoost {
-  type: 'xp_2x' | 'coin_2x' | 'xp_3x';
-  remainingTasks: number;
+  type:
+    | 'xp_2x'
+    | 'coin_2x'
+    | 'xp_3x'
+    | 'leaderboard_freeze'
+    | 'vault'
+    | 'ghost_mode'
+    | 'flame'
+    | 'ice'
+    | 'lightning'
+    | 'villain'
+    | 'all_in';
+  remainingTasks?: number;
+  expiresAt?: string;
+  bet?: number;
+  taskId?: string;
 }
 
 interface GameState {
@@ -69,6 +83,8 @@ interface GameState {
   earnedBadges: string[];
   darkMode: boolean;
   aiTokensUsed: number;
+  activeAura: string | null;
+  customTitle: string | null;
   loaded: boolean;
 }
 
@@ -84,6 +100,11 @@ type Action =
   | { type: 'CHECK_STREAK' }
   | { type: 'UNLOCK_ACHIEVEMENT'; achievementId: string }
   | { type: 'PURCHASE_ITEM'; item: ShopItem }
+  | { type: 'ADD_PURCHASED_ITEM'; itemId: string }
+  | { type: 'ADD_TIMED_BOOST'; boost: ActiveBoost }
+  | { type: 'REMOVE_BOOST_TYPE'; boostType: ActiveBoost['type'] }
+  | { type: 'SET_AVATAR_AURA'; aura: string | null }
+  | { type: 'SET_CUSTOM_TITLE'; title: string | null }
   | { type: 'SET_THEME'; themeId: ThemeId }
   | { type: 'EQUIP_BADGE'; badgeId: string | null }
   | { type: 'ADD_FOCUS_SESSION' }
