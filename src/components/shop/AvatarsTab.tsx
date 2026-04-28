@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGame } from '@/context/GameContext';
+import { useGame, type ActiveBoost } from '@/context/GameContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,6 +13,7 @@ const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { st
 const cardVar = { hidden: { opacity: 0, y: 15, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1 } };
 
 type AuraType = 'flame' | 'ice' | 'lightning' | 'villain' | 'none';
+type BoostAura = Extract<ActiveBoost['type'], 'flame' | 'ice' | 'lightning' | 'villain'>;
 
 const RARE_TITLES = ['👁️ Watcher', '🐺 Lone Wolf', '💀 Untouchable', '⚡ Overachiever'];
 
@@ -111,7 +112,7 @@ export function AvatarsTab() {
         } else {
           dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: rolled });
           // If it's an aura, apply the aura too
-          const auraMap: Record<string, AuraType> = {
+          const auraMap: Record<string, BoostAura> = {
             flame_aura: 'flame',
             ice_aura: 'ice',
             lightning_frame: 'lightning',
@@ -166,15 +167,16 @@ export function AvatarsTab() {
 
     // Aura items
     if (def.auraKey) {
+      const auraKey = def.auraKey as BoostAura;
       dispatch({ type: 'ADD_COINS', amount: -def.price });
       dispatch({ type: 'ADD_PURCHASED_ITEM', itemId });
       // Swap any existing aura for the new one (ADD_TIMED_BOOST already replaces same-type entries)
-      const auraTypes: ActiveBoostType[] = ['flame', 'ice', 'lightning', 'villain'];
+      const auraTypes: BoostAura[] = ['flame', 'ice', 'lightning', 'villain'];
       auraTypes.forEach(t => {
-        if (t !== def.auraKey) dispatch({ type: 'REMOVE_BOOST_TYPE', boostType: t });
+        if (t !== auraKey) dispatch({ type: 'REMOVE_BOOST_TYPE', boostType: t });
       });
-      dispatch({ type: 'ADD_TIMED_BOOST', boost: { type: def.auraKey } });
-      dispatch({ type: 'SET_AVATAR_AURA', aura: def.auraKey });
+      dispatch({ type: 'ADD_TIMED_BOOST', boost: { type: auraKey } });
+      dispatch({ type: 'SET_AVATAR_AURA', aura: auraKey });
       toast.success(`${def.icon} ${def.name} applied to your avatar!`);
     }
 
