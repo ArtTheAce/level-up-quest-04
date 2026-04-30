@@ -64,6 +64,7 @@ const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 export function NotificationScheduler() {
   const { state } = useGame();
   const [settings, setSettings] = useState<NotificationSettings>(loadSettings());
+  const [tick, setTick] = useState(0);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
@@ -74,6 +75,12 @@ export function NotificationScheduler() {
       window.removeEventListener('questify:notif-settings', onChange);
       window.removeEventListener('questify:notif-overrides', onChange);
     };
+  }, []);
+
+  // Re-evaluate scheduler every 5 minutes so items entering the 24h window get scheduled.
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 5 * 60 * 1000);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -162,7 +169,7 @@ export function NotificationScheduler() {
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
     };
-  }, [state.tasks, state.timetable, state.loaded, settings]);
+  }, [state.tasks, state.timetable, state.loaded, settings, tick]);
 
   return null;
 }
