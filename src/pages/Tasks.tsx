@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ReminderPicker } from '@/components/ReminderPicker';
 import { setTaskLink, getLinkedEntryId, subscribeTaskLinks } from '@/lib/taskLinks';
+import { getSavedSubjects, setSavedSubjects as persistSavedSubjects, subscribeSavedSubjects } from '@/lib/userPrefs';
 import { Link2, Link2Off } from 'lucide-react';
 import {
   AlertDialog,
@@ -29,17 +30,8 @@ import {
   type Conflict,
 } from '@/lib/taskSchedule';
 
-const SAVED_SUBJECTS_KEY = 'questify.savedSubjects';
-
 function loadSavedSubjects(): string[] {
-  try {
-    const raw = localStorage.getItem(SAVED_SUBJECTS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((s) => typeof s === 'string') : [];
-  } catch {
-    return [];
-  }
+  return getSavedSubjects();
 }
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; class: string; xp: number; weight: number }> = {
@@ -86,12 +78,14 @@ export default function Tasks() {
 
   useEffect(() => subscribeTaskLinks(() => setLinkTick((t) => t + 1)), []);
 
+  // Pull from cloud cache when prefs sync arrives.
   useEffect(() => {
-    try {
-      localStorage.setItem(SAVED_SUBJECTS_KEY, JSON.stringify(savedSubjects));
-    } catch {
-      // ignore
-    }
+    return subscribeSavedSubjects(() => setSavedSubjects(getSavedSubjects()));
+  }, []);
+
+  // Push local edits to cloud.
+  useEffect(() => {
+    persistSavedSubjects(savedSubjects);
   }, [savedSubjects]);
 
   const persistSubject = (name: string) => {
