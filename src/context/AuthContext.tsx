@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { initUserPrefs, clearUserPrefs } from '@/lib/userPrefs';
 
 interface Profile {
   username: string;
@@ -46,8 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         if (session?.user) {
           setTimeout(() => fetchProfile(session.user.id), 0);
+          setTimeout(() => initUserPrefs(session.user.id), 0);
         } else {
           setProfile(null);
+          clearUserPrefs();
         }
         setLoading(false);
       }
@@ -56,7 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+        initUserPrefs(session.user.id);
+      }
       setLoading(false);
     });
 
