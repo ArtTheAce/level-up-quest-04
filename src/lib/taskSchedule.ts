@@ -2,54 +2,19 @@
 // on the timetable, plus conflict detection.
 
 import type { Task, TimetableEntry } from '@/context/GameContext';
+import {
+  getTaskDuration,
+  setTaskDuration,
+  clearTaskDuration,
+  subscribeTaskDurations,
+} from './userPrefs';
 
-const DURATION_KEY = 'questify.taskDurations';
-const DEFAULT_DURATION = 30; // minutes
-
-type DurationMap = Record<string, number>;
-
-function load(): DurationMap {
-  try {
-    const raw = localStorage.getItem(DURATION_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function save(map: DurationMap) {
-  try {
-    localStorage.setItem(DURATION_KEY, JSON.stringify(map));
-    window.dispatchEvent(new CustomEvent('questify:taskDurationsChanged'));
-  } catch {
-    // ignore
-  }
-}
-
-export function getTaskDuration(taskId: string): number {
-  const m = load();
-  return m[taskId] ?? DEFAULT_DURATION;
-}
-
-export function setTaskDuration(taskId: string, minutes: number) {
-  const m = load();
-  m[taskId] = Math.max(5, Math.round(minutes));
-  save(m);
-}
-
-export function clearTaskDuration(taskId: string) {
-  const m = load();
-  delete m[taskId];
-  save(m);
-}
-
-export function subscribeTaskDurations(cb: () => void): () => void {
-  const handler = () => cb();
-  window.addEventListener('questify:taskDurationsChanged', handler);
-  return () => window.removeEventListener('questify:taskDurationsChanged', handler);
-}
+export {
+  getTaskDuration,
+  setTaskDuration,
+  clearTaskDuration,
+  subscribeTaskDurations,
+};
 
 // ---------- Time helpers ----------
 

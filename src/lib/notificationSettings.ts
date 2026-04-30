@@ -1,3 +1,10 @@
+import {
+  getNotificationSettingsRaw,
+  setNotificationSettingsRaw,
+  getNotificationOverrides,
+  setNotificationOverride,
+} from './userPrefs';
+
 export interface NotificationSettings {
   enabled: boolean;
   sound: boolean;
@@ -6,9 +13,6 @@ export interface NotificationSettings {
   classLead: number; // before timetable event
   taskLeads: number[]; // before deadline (multiple)
 }
-
-const KEY = 'questify.notifications.v1';
-const OVERRIDES_KEY = 'questify.notifications.overrides.v1';
 
 export const DEFAULT_SETTINGS: NotificationSettings = {
   enabled: true,
@@ -19,39 +23,22 @@ export const DEFAULT_SETTINGS: NotificationSettings = {
 };
 
 export function loadSettings(): NotificationSettings {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
+  return { ...DEFAULT_SETTINGS, ...getNotificationSettingsRaw() };
 }
 
 export function saveSettings(s: NotificationSettings) {
-  localStorage.setItem(KEY, JSON.stringify(s));
-  window.dispatchEvent(new CustomEvent('questify:notif-settings'));
+  setNotificationSettingsRaw(s);
 }
 
 // Per-item override: lead minutes array, or null = disabled, or undefined = use defaults
 export type ItemOverride = { leads: number[] } | { disabled: true };
 
 export function loadOverrides(): Record<string, ItemOverride> {
-  try {
-    const raw = localStorage.getItem(OVERRIDES_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
+  return getNotificationOverrides() as Record<string, ItemOverride>;
 }
 
 export function saveOverride(itemId: string, override: ItemOverride | null) {
-  const all = loadOverrides();
-  if (override === null) delete all[itemId];
-  else all[itemId] = override;
-  localStorage.setItem(OVERRIDES_KEY, JSON.stringify(all));
-  window.dispatchEvent(new CustomEvent('questify:notif-overrides'));
+  setNotificationOverride(itemId, override as any);
 }
 
 export function getItemLeads(
