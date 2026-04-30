@@ -161,11 +161,16 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          notification_overrides: Json
+          notification_settings: Json
+          saved_subjects: Json
           show_badges: boolean
           show_level: boolean
           show_streak: boolean
           show_tasks_completed: boolean
           show_xp: boolean
+          task_durations: Json
+          task_links: Json
           updated_at: string
           user_id: string
           username: string
@@ -175,11 +180,16 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          notification_overrides?: Json
+          notification_settings?: Json
+          saved_subjects?: Json
           show_badges?: boolean
           show_level?: boolean
           show_streak?: boolean
           show_tasks_completed?: boolean
           show_xp?: boolean
+          task_durations?: Json
+          task_links?: Json
           updated_at?: string
           user_id: string
           username: string
@@ -189,11 +199,16 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          notification_overrides?: Json
+          notification_settings?: Json
+          saved_subjects?: Json
           show_badges?: boolean
           show_level?: boolean
           show_streak?: boolean
           show_tasks_completed?: boolean
           show_xp?: boolean
+          task_durations?: Json
+          task_links?: Json
           updated_at?: string
           user_id?: string
           username?: string
