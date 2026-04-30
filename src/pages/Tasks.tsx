@@ -83,9 +83,15 @@ export default function Tasks() {
     return subscribeSavedSubjects(() => setSavedSubjects(getSavedSubjects()));
   }, []);
 
-  // Push local edits to cloud.
+  // Push local edits to cloud (skip if already in sync).
   useEffect(() => {
-    persistSavedSubjects(savedSubjects);
+    const remote = getSavedSubjects();
+    if (
+      remote.length !== savedSubjects.length ||
+      remote.some((s, i) => s !== savedSubjects[i])
+    ) {
+      persistSavedSubjects(savedSubjects);
+    }
   }, [savedSubjects]);
 
   const persistSubject = (name: string) => {
