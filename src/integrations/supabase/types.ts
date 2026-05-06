@@ -293,6 +293,15 @@ export type Database = {
         Args: { _request_id: string }
         Returns: undefined
       }
+      cast_task_curse: {
+        Args: {
+          _priority: string
+          _subject: string
+          _target_user_id: string
+          _title: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
