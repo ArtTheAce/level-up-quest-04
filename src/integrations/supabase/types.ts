@@ -157,8 +157,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_aura: string | null
           avatar_url: string | null
           created_at: string
+          custom_title: string | null
           display_name: string | null
           id: string
           notification_overrides: Json
@@ -176,8 +178,10 @@ export type Database = {
           username: string
         }
         Insert: {
+          active_aura?: string | null
           avatar_url?: string | null
           created_at?: string
+          custom_title?: string | null
           display_name?: string | null
           id?: string
           notification_overrides?: Json
@@ -195,8 +199,10 @@ export type Database = {
           username: string
         }
         Update: {
+          active_aura?: string | null
           avatar_url?: string | null
           created_at?: string
+          custom_title?: string | null
           display_name?: string | null
           id?: string
           notification_overrides?: Json
@@ -292,6 +298,15 @@ export type Database = {
       accept_friend_request: {
         Args: { _request_id: string }
         Returns: undefined
+      }
+      cast_task_curse: {
+        Args: {
+          _priority: string
+          _subject: string
+          _target_user_id: string
+          _title: string
+        }
+        Returns: string
       }
     }
     Enums: {

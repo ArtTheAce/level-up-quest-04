@@ -467,6 +467,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const { data: tasks } = await supabase.from('tasks').select('*').eq('user_id', user.id);
       // Load timetable
       const { data: timetable } = await supabase.from('timetable_entries').select('*').eq('user_id', user.id);
+      // Load cosmetic profile fields (custom title, active aura)
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('custom_title, active_aura')
+        .eq('user_id', user.id)
+        .single();
 
       const loadedState: Partial<GameState> = {};
 
@@ -513,6 +519,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
 
       loadedState.achievements = ACHIEVEMENTS;
+      if (prof) {
+        loadedState.customTitle = (prof as any).custom_title ?? null;
+        loadedState.activeAura = (prof as any).active_aura ?? null;
+      }
       dispatch({ type: 'LOAD_STATE', state: loadedState });
 
       // Check streak after loading
