@@ -120,6 +120,9 @@ export function AvatarsTab() {
           if (auraMap[rolled]) {
             dispatch({ type: 'ADD_TIMED_BOOST', boost: { type: auraMap[rolled] } });
             dispatch({ type: 'SET_AVATAR_AURA', aura: auraMap[rolled] });
+            if (user) {
+              await supabase.from('profiles').update({ active_aura: auraMap[rolled] } as any).eq('user_id', user.id);
+            }
           } else if (rolled === 'ghost_mode') {
             dispatch({
               type: 'ADD_TIMED_BOOST',
@@ -177,6 +180,9 @@ export function AvatarsTab() {
       });
       dispatch({ type: 'ADD_TIMED_BOOST', boost: { type: auraKey } });
       dispatch({ type: 'SET_AVATAR_AURA', aura: auraKey });
+      if (user) {
+        await supabase.from('profiles').update({ active_aura: auraKey } as any).eq('user_id', user.id);
+      }
       toast.success(`${def.icon} ${def.name} applied to your avatar!`);
     }
 
