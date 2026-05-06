@@ -104,10 +104,10 @@ export function AvatarsTab() {
         dispatch({ type: 'ADD_COINS', amount: -def.price });
         setRevealItem(rolled);
         if (RARE_TITLES.includes(rolled)) {
-          // Apply as title
+          // Apply as a custom title (does NOT overwrite the user's real display name)
           dispatch({ type: 'SET_CUSTOM_TITLE', title: rolled });
           if (user) {
-            await supabase.from('profiles').update({ display_name: rolled }).eq('user_id', user.id);
+            await supabase.from('profiles').update({ custom_title: rolled } as any).eq('user_id', user.id);
           }
         } else {
           dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: rolled });
@@ -189,7 +189,11 @@ export function AvatarsTab() {
     if (titleInput.length > 20) { toast.error('Title must be 20 characters or fewer.'); return; }
     setLoading(true);
     dispatch({ type: 'ADD_COINS', amount: -250 });
-    await supabase.from('profiles').update({ display_name: titleInput.trim() }).eq('user_id', user?.id || '');
+    dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: 'custom_title' });
+    dispatch({ type: 'SET_CUSTOM_TITLE', title: titleInput.trim() });
+    if (user) {
+      await supabase.from('profiles').update({ custom_title: titleInput.trim() } as any).eq('user_id', user.id);
+    }
     toast.success(`🏷️ Title set to "${titleInput}"!`);
     setModal(null);
     setTitleInput('');
