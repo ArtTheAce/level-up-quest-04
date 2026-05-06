@@ -89,17 +89,20 @@ export function RivalryTab() {
       if (action === 'curse') {
         const taskText = CURSE_TASKS[subject]?.[difficulty] || 'Complete a subject-related academic task';
         const xp = XP_FOR_DIFF[difficulty];
-        // Insert cursed task into target's tasks
-        await supabase.from('tasks').insert({
-          user_id: selectedFriend,
-          title: `👻 CURSED (${subject} · ${difficulty}): ${taskText}`,
-          completed: false,
-          priority: difficulty === 'Easy' ? 'easy' : difficulty === 'Medium' ? 'medium' : 'hard',
-          subject,
-          subject_color: 'other',
-          deadline: null,
-          created_at: new Date().toISOString(),
+        const priority = difficulty === 'Easy' ? 'easy' : difficulty === 'Medium' ? 'medium' : 'hard';
+        // Use RPC: regular insert is blocked by RLS (target's row), this server-side
+        // function verifies friendship and inserts the cursed task on their behalf.
+        const { error: curseErr } = await supabase.rpc('cast_task_curse', {
+          _target_user_id: selectedFriend,
+          _title: `👻 CURSED (${subject} · ${difficulty}): ${taskText}`,
+          _subject: subject,
+          _priority: priority,
         });
+        if (curseErr) {
+          toast.error(`Curse failed: ${curseErr.message}`);
+          setLoading(false);
+          return;
+        }
         await sendNotification(selectedFriend, 'curse', `🪄 ${name} cursed you with a ${difficulty} ${subject} task! Complete it to earn ${xp} XP! 👻`, {
           subject, difficulty, xp, fromName: name,
         });
