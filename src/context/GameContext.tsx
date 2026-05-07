@@ -27,7 +27,7 @@ export interface TimetableEntry {
   /** Legacy: a single weekday index (Mon=0..Sun=6). Kept for backward compat. */
   day: number;
   /** Weekdays this class repeats on (Mon=0..Sun=6). Source of truth. */
-  days: number[];
+  days?: number[];
   startTime: string;
   endTime: string;
   teacher?: string;
