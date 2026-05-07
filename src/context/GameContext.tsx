@@ -97,6 +97,7 @@ interface GameState {
 
 type Action =
   | { type: 'ADD_TASK'; task: Task }
+  | { type: 'UPDATE_TASK'; task: Task }
   | { type: 'TOGGLE_TASK'; taskId: string }
   | { type: 'DELETE_TASK'; taskId: string }
   | { type: 'ADD_TIMETABLE_ENTRY'; entry: TimetableEntry }
@@ -242,6 +243,13 @@ function gameReducer(state: GameState, action: Action): GameState {
 
     case 'ADD_TASK':
       newState = { ...state, tasks: [...state.tasks, action.task] };
+      break;
+
+    case 'UPDATE_TASK':
+      newState = {
+        ...state,
+        tasks: state.tasks.map(t => t.id === action.task.id ? { ...t, ...action.task } : t),
+      };
       break;
 
     case 'TOGGLE_TASK': {
