@@ -226,10 +226,12 @@ export type Database = {
           completed: boolean
           created_at: string
           deadline: string | null
+          description: string | null
           id: string
           priority: string
           subject: string | null
           subject_color: string | null
+          tags: string[]
           title: string
           user_id: string
         }
@@ -237,10 +239,12 @@ export type Database = {
           completed?: boolean
           created_at?: string
           deadline?: string | null
+          description?: string | null
           id?: string
           priority?: string
           subject?: string | null
           subject_color?: string | null
+          tags?: string[]
           title: string
           user_id: string
         }
@@ -248,10 +252,12 @@ export type Database = {
           completed?: boolean
           created_at?: string
           deadline?: string | null
+          description?: string | null
           id?: string
           priority?: string
           subject?: string | null
           subject_color?: string | null
+          tags?: string[]
           title?: string
           user_id?: string
         }
@@ -261,31 +267,40 @@ export type Database = {
         Row: {
           created_at: string
           day: number
+          days: number[]
           end_time: string
           id: string
+          room: string | null
           start_time: string
           subject: string
           subject_color: string
+          teacher: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           day: number
+          days?: number[]
           end_time: string
           id?: string
+          room?: string | null
           start_time: string
           subject: string
           subject_color?: string
+          teacher?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           day?: number
+          days?: number[]
           end_time?: string
           id?: string
+          room?: string | null
           start_time?: string
           subject?: string
           subject_color?: string
+          teacher?: string | null
           user_id?: string
         }
         Relationships: []
