@@ -29,7 +29,10 @@ export function TodaySchedule() {
 
   const todayClasses = useMemo(() => {
     return state.timetable
-      .filter(e => e.day === todayIdx)
+      .filter(e => {
+        const days = e.days && e.days.length > 0 ? e.days : [e.day];
+        return days.includes(todayIdx);
+      })
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   }, [state.timetable, todayIdx]);
 
