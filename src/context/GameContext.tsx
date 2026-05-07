@@ -16,15 +16,22 @@ export interface Task {
   subjectColor?: SubjectColor;
   deadline?: string;
   createdAt: string;
+  description?: string;
+  tags?: string[];
 }
 
 export interface TimetableEntry {
   id: string;
   subject: string;
   subjectColor: SubjectColor;
+  /** Legacy: a single weekday index (Mon=0..Sun=6). Kept for backward compat. */
   day: number;
+  /** Weekdays this class repeats on (Mon=0..Sun=6). Source of truth. */
+  days: number[];
   startTime: string;
   endTime: string;
+  teacher?: string;
+  room?: string;
 }
 
 export interface Achievement {
@@ -504,18 +511,26 @@ export function GameProvider({ children }: { children: ReactNode }) {
           subjectColor: (t.subject_color || undefined) as SubjectColor | undefined,
           deadline: t.deadline || undefined,
           createdAt: t.created_at,
+          description: (t as any).description || undefined,
+          tags: ((t as any).tags as string[] | null) || [],
         }));
       }
 
       if (timetable) {
-        loadedState.timetable = timetable.map(e => ({
-          id: e.id,
-          subject: e.subject,
-          subjectColor: e.subject_color as SubjectColor,
-          day: e.day,
-          startTime: e.start_time,
-          endTime: e.end_time,
-        }));
+        loadedState.timetable = timetable.map(e => {
+          const days = ((e as any).days as number[] | null) || [];
+          return {
+            id: e.id,
+            subject: e.subject,
+            subjectColor: e.subject_color as SubjectColor,
+            day: e.day,
+            days: days.length > 0 ? days : (typeof e.day === 'number' ? [e.day] : []),
+            startTime: e.start_time,
+            endTime: e.end_time,
+            teacher: (e as any).teacher || undefined,
+            room: (e as any).room || undefined,
+          };
+        });
       }
 
       loadedState.achievements = ACHIEVEMENTS;
@@ -579,6 +594,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
           subject_color: t.subjectColor || null,
           deadline: t.deadline || null,
           created_at: t.createdAt,
+          description: t.description || null,
+          tags: t.tags || [],
         }));
         await supabase.from('tasks').upsert(taskRows, { onConflict: 'id' });
       }
@@ -600,9 +617,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
           user_id: user.id,
           subject: e.subject,
           subject_color: e.subjectColor,
-          day: e.day,
+          day: (e.days && e.days.length > 0) ? e.days[0] : e.day,
+          days: e.days && e.days.length > 0 ? e.days : [e.day],
           start_time: e.startTime,
           end_time: e.endTime,
+          teacher: e.teacher || null,
+          room: e.room || null,
         }));
         await supabase.from('timetable_entries').upsert(rows, { onConflict: 'id' });
       }
