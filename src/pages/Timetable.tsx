@@ -12,8 +12,11 @@ import { format, startOfWeek, addDays, addWeeks, subWeeks, startOfMonth, endOfMo
 import { cn } from '@/lib/utils';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const HOURS = Array.from({ length: 15 }, (_, i) => i + 7); // 7am - 9pm
+// 5:00 AM through 11:00 PM rows (last row covers 11pm-12am midnight)
+const HOURS = Array.from({ length: 19 }, (_, i) => i + 5);
 const HOUR_HEIGHT = 56;
+// Default scroll: 7:00 AM = 2 rows below 5:00 AM
+const DEFAULT_SCROLL_HOUR = 7;
 
 const COLOUR_PALETTE = [
   '#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ec4899', '#ef4444',
