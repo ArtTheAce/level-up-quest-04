@@ -90,8 +90,20 @@ export function RivalryTab() {
         const taskText = CURSE_TASKS[subject]?.[difficulty] || 'Complete a subject-related academic task';
         const xp = XP_FOR_DIFF[difficulty];
         const priority = difficulty === 'Easy' ? 'easy' : difficulty === 'Medium' ? 'medium' : 'hard';
-        // Use RPC: regular insert is blocked by RLS (target's row), this server-side
-        // function verifies friendship and inserts the cursed task on their behalf.
+        // First, attempt to consume target's Curse Block. If blocked, notify attacker and abort.
+        const { data: blocked } = await supabase.rpc('consume_curse_block', {
+          _target_user_id: selectedFriend,
+        });
+        if (blocked) {
+          toast.error('🛡️ Your curse was blocked! Their Curse Block deflected it.');
+          // Notify the target that they blocked one
+          await sendNotification(selectedFriend, 'curse_blocked', `🛡️ You blocked an incoming curse from ${name}!`, { fromName: name });
+          dispatch({ type: 'ADD_COINS', amount: -price });
+          dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: action });
+          setModal(null);
+          setLoading(false);
+          return;
+        }
         const { error: curseErr } = await supabase.rpc('cast_task_curse', {
           _target_user_id: selectedFriend,
           _title: `👻 CURSED (${subject} · ${difficulty}): ${taskText}`,
@@ -108,22 +120,46 @@ export function RivalryTab() {
         });
         toast.success(`Curse cast! 🪄 They've been given a ${difficulty} ${subject} task.`);
       } else if (action === 'xp_tax') {
+        await supabase.rpc('cast_effect', {
+          _target_user_id: selectedFriend,
+          _type: 'xp_tax_pending',
+          _payload: { fromUserId: user?.id, fromName: name, percent: 5 },
+          _expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
         await sendNotification(selectedFriend, 'xp_tax', `💸 ${name} placed an XP Tax on you! They'll steal 5% of your next XP earn.`, {
           fromUserId: user?.id, fromName: name,
         });
         toast.success(`XP Tax placed on them! 💸 You'll steal their next 5%.`);
       } else if (action === 'rank_steal') {
+        await supabase.rpc('cast_effect', {
+          _target_user_id: selectedFriend,
+          _type: 'dethroned',
+          _payload: { fromName: name },
+          _expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
         await sendNotification(selectedFriend, 'rank_steal', `👊 ${name} dethroned you! A "Dethroned 👊" badge will appear on your leaderboard entry for 24hrs.`, {
           fromName: name, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         });
         toast.success(`Dethroned them! 👊`);
       } else if (action === 'silence') {
+        await supabase.rpc('cast_effect', {
+          _target_user_id: selectedFriend,
+          _type: 'silence',
+          _payload: { fromName: name },
+          _expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
         await sendNotification(selectedFriend, 'silence', `🔇 ${name} silenced you! Your celebration notifications are muted for 24hrs.`, {
           fromName: name, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         });
         toast.success(`Silenced! 🔇 They won't hear any celebrations for 24hrs.`);
       } else if (action === 'curse_block') {
-        // Mark curse_block as purchased (acts as inventory item)
+        // Add an inventory curse_block effect on self (no expiry, consumed on first incoming curse)
+        if (user) {
+          await supabase.from('active_effects').insert({
+            user_id: user.id, source_user_id: user.id, type: 'curse_block',
+            payload: {}, expires_at: null,
+          });
+        }
         dispatch({ type: 'ADD_PURCHASED_ITEM', itemId: 'curse_block' });
         toast.success('Curse Block active! 🛡️ Next curse sent to you will be deflected.');
       } else if (action === 'all_in') {
