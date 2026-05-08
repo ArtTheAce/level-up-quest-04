@@ -63,7 +63,7 @@ const emptyForm = (): ClassFormState => ({
 });
 
 export default function Timetable() {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, toggleTask } = useGame();
   const [view, setView] = useState<'week' | 'month'>('week');
   const [anchor, setAnchor] = useState<Date>(new Date());
   const [filter, setFilter] = useState<string>(''); // search

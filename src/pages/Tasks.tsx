@@ -47,7 +47,7 @@ const emptyForm = (): FormState => ({
 });
 
 export default function Tasks() {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, toggleTask } = useGame();
   const [form, setForm] = useState<FormState>(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
