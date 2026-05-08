@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useGame, type TimetableEntry, type Task } from '@/context/GameContext';
 import { motion } from 'framer-motion';
 import { Plus, X, CheckCircle2, Circle, ChevronLeft, ChevronRight, Pencil, CalendarDays } from 'lucide-react';
@@ -376,8 +376,16 @@ function WeekView({
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const startBaseMin = HOURS[0] * 60;
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    // Scroll vertical container to the default hour on first mount.
+    const offset = (DEFAULT_SCROLL_HOUR - HOURS[0]) * HOUR_HEIGHT;
+    scrollRef.current.scrollTop = Math.max(0, offset);
+  }, []);
+
   return (
-    <div className="glass-card overflow-x-auto">
+    <div ref={scrollRef} className="glass-card overflow-auto max-h-[70vh]">
       <div className="min-w-[760px]">
         {/* Header */}
         <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border">
