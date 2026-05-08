@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_effects: {
+        Row: {
+          consumed: boolean
+          created_at: string
+          expires_at: string | null
+          id: string
+          payload: Json
+          source_user_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          consumed?: boolean
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          payload?: Json
+          source_user_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          consumed?: boolean
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          payload?: Json
+          source_user_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      daily_quests: {
+        Row: {
+          claimed: Json
+          expires_at: string
+          generated_at: string
+          id: string
+          quests: Json
+          user_id: string
+        }
+        Insert: {
+          claimed?: Json
+          expires_at?: string
+          generated_at?: string
+          id?: string
+          quests?: Json
+          user_id: string
+        }
+        Update: {
+          claimed?: Json
+          expires_at?: string
+          generated_at?: string
+          id?: string
+          quests?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
+      duel_sessions: {
+        Row: {
+          challenger_id: string
+          challenger_score: number
+          created_at: string
+          ends_at: string | null
+          id: string
+          opponent_id: string
+          opponent_score: number
+          stake: number
+          starts_at: string | null
+          status: string
+          winner_id: string | null
+        }
+        Insert: {
+          challenger_id: string
+          challenger_score?: number
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          opponent_id: string
+          opponent_score?: number
+          stake?: number
+          starts_at?: string | null
+          status?: string
+          winner_id?: string | null
+        }
+        Update: {
+          challenger_id?: string
+          challenger_score?: number
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          opponent_id?: string
+          opponent_score?: number
+          stake?: number
+          starts_at?: string | null
+          status?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       friend_requests: {
         Row: {
           created_at: string
@@ -155,6 +257,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pinned_callouts: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          message: string
+          sender_user_id: string
+          target_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          message: string
+          sender_user_id: string
+          target_user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          message?: string
+          sender_user_id?: string
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active_aura: string | null
@@ -218,6 +347,39 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string
+        }
+        Relationships: []
+      }
+      task_completions: {
+        Row: {
+          coins_granted: number
+          completed_at: string
+          id: string
+          reversed: boolean
+          reversed_at: string | null
+          task_id: string
+          user_id: string
+          xp_granted: number
+        }
+        Insert: {
+          coins_granted?: number
+          completed_at?: string
+          id?: string
+          reversed?: boolean
+          reversed_at?: string | null
+          task_id: string
+          user_id: string
+          xp_granted?: number
+        }
+        Update: {
+          coins_granted?: number
+          completed_at?: string
+          id?: string
+          reversed?: boolean
+          reversed_at?: string | null
+          task_id?: string
+          user_id?: string
+          xp_granted?: number
         }
         Relationships: []
       }
@@ -314,6 +476,15 @@ export type Database = {
         Args: { _request_id: string }
         Returns: undefined
       }
+      cast_effect: {
+        Args: {
+          _expires_at: string
+          _payload: Json
+          _target_user_id: string
+          _type: string
+        }
+        Returns: string
+      }
       cast_task_curse: {
         Args: {
           _priority: string
@@ -323,6 +494,11 @@ export type Database = {
         }
         Returns: string
       }
+      consume_curse_block: {
+        Args: { _target_user_id: string }
+        Returns: boolean
+      }
+      resolve_duel: { Args: { _duel_id: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
