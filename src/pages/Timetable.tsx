@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useGame, type TimetableEntry, type Task } from '@/context/GameContext';
 import { motion } from 'framer-motion';
 import { Plus, X, CheckCircle2, Circle, ChevronLeft, ChevronRight, Pencil, CalendarDays } from 'lucide-react';
@@ -12,8 +12,11 @@ import { format, startOfWeek, addDays, addWeeks, subWeeks, startOfMonth, endOfMo
 import { cn } from '@/lib/utils';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const HOURS = Array.from({ length: 15 }, (_, i) => i + 7); // 7am - 9pm
+// 5:00 AM through 11:00 PM rows (last row covers 11pm-12am midnight)
+const HOURS = Array.from({ length: 19 }, (_, i) => i + 5);
 const HOUR_HEIGHT = 56;
+// Default scroll: 7:00 AM = 2 rows below 5:00 AM
+const DEFAULT_SCROLL_HOUR = 7;
 
 const COLOUR_PALETTE = [
   '#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ec4899', '#ef4444',
@@ -63,7 +66,7 @@ const emptyForm = (): ClassFormState => ({
 });
 
 export default function Timetable() {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, toggleTask } = useGame();
   const [view, setView] = useState<'week' | 'month'>('week');
   const [anchor, setAnchor] = useState<Date>(new Date());
   const [filter, setFilter] = useState<string>(''); // search
@@ -195,7 +198,7 @@ export default function Timetable() {
           classes={visibleClasses}
           tasks={scheduledTasks}
           onEditClass={openEdit}
-          onToggleTask={(id) => dispatch({ type: 'TOGGLE_TASK', taskId: id })}
+          onToggleTask={(id) => toggleTask(id)}
         />
       ) : (
         <MonthView
@@ -221,7 +224,7 @@ export default function Timetable() {
                   t.completed && 'opacity-50'
                 )}
               >
-                <button onClick={() => dispatch({ type: 'TOGGLE_TASK', taskId: t.id })}>
+                <button onClick={() => toggleTask(t.id)}>
                   {t.completed
                     ? <CheckCircle2 className="h-5 w-5 text-primary" />
                     : <Circle className="h-5 w-5 text-muted-foreground" />}
@@ -373,8 +376,16 @@ function WeekView({
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const startBaseMin = HOURS[0] * 60;
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    // Scroll vertical container to the default hour on first mount.
+    const offset = (DEFAULT_SCROLL_HOUR - HOURS[0]) * HOUR_HEIGHT;
+    scrollRef.current.scrollTop = Math.max(0, offset);
+  }, []);
+
   return (
-    <div className="glass-card overflow-x-auto">
+    <div ref={scrollRef} className="glass-card overflow-auto max-h-[70vh]">
       <div className="min-w-[760px]">
         {/* Header */}
         <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border">

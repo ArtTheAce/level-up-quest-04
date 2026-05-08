@@ -99,6 +99,7 @@ type Action =
   | { type: 'ADD_TASK'; task: Task }
   | { type: 'UPDATE_TASK'; task: Task }
   | { type: 'TOGGLE_TASK'; taskId: string }
+  | { type: 'APPLY_TASK_TOGGLE'; taskId: string; completing: boolean; xpDelta: number; coinDelta: number }
   | { type: 'DELETE_TASK'; taskId: string }
   | { type: 'ADD_TIMETABLE_ENTRY'; entry: TimetableEntry }
   | { type: 'DELETE_TIMETABLE_ENTRY'; entryId: string }
@@ -123,6 +124,22 @@ type Action =
 const XP_PER_LEVEL = 100;
 const XP_REWARDS: Record<Priority, number> = { easy: 10, medium: 25, hard: 50 };
 const COIN_REWARDS: Record<Priority, number> = { easy: 5, medium: 15, hard: 30 };
+
+// Exported so helpers (toggleTask) can replicate boost-aware reward math.
+export function computeTaskReward(
+  task: Task,
+  activeBoosts: ActiveBoost[],
+): { xp: number; coins: number } {
+  const hasXp3x = activeBoosts.some(b => b.type === 'xp_3x' && (b.remainingTasks ?? 0) > 0);
+  const hasXp2x = activeBoosts.some(b => b.type === 'xp_2x' && (b.remainingTasks ?? 0) > 0);
+  const hasCoin2x = activeBoosts.some(b => b.type === 'coin_2x' && (b.remainingTasks ?? 0) > 0);
+  const xpMult = hasXp3x ? 3 : hasXp2x ? 2 : 1;
+  const coinMult = hasCoin2x ? 2 : 1;
+  return {
+    xp: XP_REWARDS[task.priority] * xpMult,
+    coins: COIN_REWARDS[task.priority] * coinMult,
+  };
+}
 
 const ACHIEVEMENTS: Achievement[] = [
   { id: 'first_task', title: 'First Steps', description: 'Complete your first task', icon: '🎯' },
@@ -300,6 +317,36 @@ function gameReducer(state: GameState, action: Action): GameState {
       break;
     }
 
+    case 'APPLY_TASK_TOGGLE': {
+      const task = state.tasks.find(t => t.id === action.taskId);
+      if (!task) return state;
+      const newTasks = state.tasks.map(t =>
+        t.id === action.taskId ? { ...t, completed: action.completing } : t
+      );
+      const newXp = Math.max(0, state.xp + action.xpDelta);
+      const newLevel = Math.max(1, Math.floor(newXp / XP_PER_LEVEL) + 1);
+      const newCoins = state.coins + action.coinDelta; // allow negative
+      let newBoosts = state.activeBoosts;
+      if (action.completing) {
+        const consume: ActiveBoost['type'][] = ['xp_2x', 'xp_3x', 'coin_2x'];
+        newBoosts = state.activeBoosts
+          .map(b => consume.includes(b.type) && typeof b.remainingTasks === 'number'
+            ? { ...b, remainingTasks: b.remainingTasks - 1 } : b)
+          .filter(b => consume.includes(b.type) ? (b.remainingTasks ?? 0) > 0 : true);
+      }
+      newState = {
+        ...state,
+        tasks: newTasks,
+        xp: newXp,
+        level: newLevel,
+        coins: newCoins,
+        totalTasksCompleted: Math.max(0, state.totalTasksCompleted + (action.completing ? 1 : -1)),
+        lastActiveDate: action.completing ? getToday() : state.lastActiveDate,
+        activeBoosts: newBoosts,
+      };
+      break;
+    }
+
     case 'DELETE_TASK':
       newState = { ...state, tasks: state.tasks.filter(t => t.id !== action.taskId) };
       break;
@@ -460,6 +507,7 @@ const GameContext = createContext<{
   dispatch: React.Dispatch<Action>;
   xpProgress: number;
   xpToNextLevel: number;
+  toggleTask: (taskId: string) => Promise<void>;
 } | null>(null);
 
 export function GameProvider({ children }: { children: ReactNode }) {
@@ -660,8 +708,42 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const xpProgress = (xpInCurrentLevel / XP_PER_LEVEL) * 100;
   const xpToNextLevel = XP_PER_LEVEL - xpInCurrentLevel;
 
+  // Central toggle: records completion (for reversal) when completing,
+  // reverses exact prior reward when uncompleting. Anti-exploit.
+  const toggleTask = useCallback(async (taskId: string) => {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task || !user) return;
+    const completing = !task.completed;
+    if (completing) {
+      const { xp, coins } = computeTaskReward(task, state.activeBoosts);
+      dispatch({ type: 'APPLY_TASK_TOGGLE', taskId, completing: true, xpDelta: xp, coinDelta: coins });
+      await supabase.from('task_completions').insert({
+        task_id: taskId, user_id: user.id, xp_granted: xp, coins_granted: coins,
+      });
+    } else {
+      // Find latest unreversed completion to reverse exact rewards
+      const { data: completions } = await supabase
+        .from('task_completions')
+        .select('id, xp_granted, coins_granted')
+        .eq('task_id', taskId)
+        .eq('user_id', user.id)
+        .eq('reversed', false)
+        .order('completed_at', { ascending: false })
+        .limit(1);
+      const last = completions?.[0];
+      const xpDelta = last ? -last.xp_granted : 0;
+      const coinDelta = last ? -last.coins_granted : 0;
+      dispatch({ type: 'APPLY_TASK_TOGGLE', taskId, completing: false, xpDelta, coinDelta });
+      if (last) {
+        await supabase.from('task_completions')
+          .update({ reversed: true, reversed_at: new Date().toISOString() })
+          .eq('id', last.id);
+      }
+    }
+  }, [state.tasks, state.activeBoosts, user]);
+
   return (
-    <GameContext.Provider value={{ state, dispatch, xpProgress, xpToNextLevel }}>
+    <GameContext.Provider value={{ state, dispatch, xpProgress, xpToNextLevel, toggleTask }}>
       {children}
     </GameContext.Provider>
   );

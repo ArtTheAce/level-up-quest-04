@@ -88,6 +88,12 @@ export function SocialTab() {
         });
         toast.success('Callout pinned! 📢');
       } else if (action === 'freeze') {
+        if (user) {
+          await supabase.from('active_effects').insert({
+            user_id: user.id, source_user_id: user.id, type: 'freeze',
+            payload: {}, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          });
+        }
         dispatch({
           type: 'ADD_TIMED_BOOST',
           boost: {
@@ -97,6 +103,14 @@ export function SocialTab() {
         });
         toast.success('Leaderboard Freeze active for 24hrs! 🧊');
       } else if (action === 'bounty') {
+        if (user) {
+          await supabase.rpc('cast_effect', {
+            _target_user_id: selectedFriend,
+            _type: 'bounty',
+            _payload: { fromUserId: user.id, fromName: name, bountyAmount: price },
+            _expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          });
+        }
         await sendNotification(selectedFriend, 'bounty', `🎯 ${name} placed a bounty on you! Complete your tasks or lose ${price} coins!`, {
           bountyAmount: price,
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -111,8 +125,22 @@ export function SocialTab() {
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           stake: price,
         });
+        if (user) {
+          await supabase.from('duel_sessions').insert({
+            challenger_id: user.id,
+            opponent_id: selectedFriend,
+            stake: price,
+            status: 'pending',
+          });
+        }
         toast.success('Duel request sent! ⚔️ Waiting for acceptance...');
       } else if (action === 'vault') {
+        if (user) {
+          await supabase.from('active_effects').insert({
+            user_id: user.id, source_user_id: user.id, type: 'vault',
+            payload: {}, expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+          });
+        }
         dispatch({
           type: 'ADD_TIMED_BOOST',
           boost: {
