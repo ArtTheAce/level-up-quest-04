@@ -507,6 +507,7 @@ const GameContext = createContext<{
   dispatch: React.Dispatch<Action>;
   xpProgress: number;
   xpToNextLevel: number;
+  toggleTask: (taskId: string) => Promise<void>;
 } | null>(null);
 
 export function GameProvider({ children }: { children: ReactNode }) {
@@ -707,8 +708,42 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const xpProgress = (xpInCurrentLevel / XP_PER_LEVEL) * 100;
   const xpToNextLevel = XP_PER_LEVEL - xpInCurrentLevel;
 
+  // Central toggle: records completion (for reversal) when completing,
+  // reverses exact prior reward when uncompleting. Anti-exploit.
+  const toggleTask = useCallback(async (taskId: string) => {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task || !user) return;
+    const completing = !task.completed;
+    if (completing) {
+      const { xp, coins } = computeTaskReward(task, state.activeBoosts);
+      dispatch({ type: 'APPLY_TASK_TOGGLE', taskId, completing: true, xpDelta: xp, coinDelta: coins });
+      await supabase.from('task_completions').insert({
+        task_id: taskId, user_id: user.id, xp_granted: xp, coins_granted: coins,
+      });
+    } else {
+      // Find latest unreversed completion to reverse exact rewards
+      const { data: completions } = await supabase
+        .from('task_completions')
+        .select('id, xp_granted, coins_granted')
+        .eq('task_id', taskId)
+        .eq('user_id', user.id)
+        .eq('reversed', false)
+        .order('completed_at', { ascending: false })
+        .limit(1);
+      const last = completions?.[0];
+      const xpDelta = last ? -last.xp_granted : 0;
+      const coinDelta = last ? -last.coins_granted : 0;
+      dispatch({ type: 'APPLY_TASK_TOGGLE', taskId, completing: false, xpDelta, coinDelta });
+      if (last) {
+        await supabase.from('task_completions')
+          .update({ reversed: true, reversed_at: new Date().toISOString() })
+          .eq('id', last.id);
+      }
+    }
+  }, [state.tasks, state.activeBoosts, user]);
+
   return (
-    <GameContext.Provider value={{ state, dispatch, xpProgress, xpToNextLevel }}>
+    <GameContext.Provider value={{ state, dispatch, xpProgress, xpToNextLevel, toggleTask }}>
       {children}
     </GameContext.Provider>
   );
