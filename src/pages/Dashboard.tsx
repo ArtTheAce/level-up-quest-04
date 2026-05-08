@@ -4,6 +4,7 @@ import { CheckSquare, Flame, Coins, TrendingUp, Zap } from 'lucide-react';
 import { DailyQuests } from '@/components/dashboard/DailyQuests';
 import { TodaySchedule } from '@/components/dashboard/TodaySchedule';
 import { StudyHeatmap } from '@/components/dashboard/StudyHeatmap';
+import { ActiveEffectsPanel } from '@/components/effects/ActiveEffectsPanel';
 
 const container = {
   hidden: { opacity: 0 },
@@ -82,6 +83,10 @@ export default function Dashboard() {
       <motion.div variants={item} className="grid md:grid-cols-2 gap-4">
         <TodaySchedule />
         <DailyQuests />
+      </motion.div>
+
+      <motion.div variants={item}>
+        <ActiveEffectsPanel />
       </motion.div>
 
       {/* Activity heatmap */}
