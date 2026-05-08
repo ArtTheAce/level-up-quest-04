@@ -99,6 +99,7 @@ type Action =
   | { type: 'ADD_TASK'; task: Task }
   | { type: 'UPDATE_TASK'; task: Task }
   | { type: 'TOGGLE_TASK'; taskId: string }
+  | { type: 'APPLY_TASK_TOGGLE'; taskId: string; completing: boolean; xpDelta: number; coinDelta: number }
   | { type: 'DELETE_TASK'; taskId: string }
   | { type: 'ADD_TIMETABLE_ENTRY'; entry: TimetableEntry }
   | { type: 'DELETE_TIMETABLE_ENTRY'; entryId: string }
@@ -123,6 +124,22 @@ type Action =
 const XP_PER_LEVEL = 100;
 const XP_REWARDS: Record<Priority, number> = { easy: 10, medium: 25, hard: 50 };
 const COIN_REWARDS: Record<Priority, number> = { easy: 5, medium: 15, hard: 30 };
+
+// Exported so helpers (toggleTask) can replicate boost-aware reward math.
+export function computeTaskReward(
+  task: Task,
+  activeBoosts: ActiveBoost[],
+): { xp: number; coins: number } {
+  const hasXp3x = activeBoosts.some(b => b.type === 'xp_3x' && (b.remainingTasks ?? 0) > 0);
+  const hasXp2x = activeBoosts.some(b => b.type === 'xp_2x' && (b.remainingTasks ?? 0) > 0);
+  const hasCoin2x = activeBoosts.some(b => b.type === 'coin_2x' && (b.remainingTasks ?? 0) > 0);
+  const xpMult = hasXp3x ? 3 : hasXp2x ? 2 : 1;
+  const coinMult = hasCoin2x ? 2 : 1;
+  return {
+    xp: XP_REWARDS[task.priority] * xpMult,
+    coins: COIN_REWARDS[task.priority] * coinMult,
+  };
+}
 
 const ACHIEVEMENTS: Achievement[] = [
   { id: 'first_task', title: 'First Steps', description: 'Complete your first task', icon: '🎯' },
@@ -297,6 +314,36 @@ function gameReducer(state: GameState, action: Action): GameState {
       } else {
         newState = { ...state, tasks: newTasks };
       }
+      break;
+    }
+
+    case 'APPLY_TASK_TOGGLE': {
+      const task = state.tasks.find(t => t.id === action.taskId);
+      if (!task) return state;
+      const newTasks = state.tasks.map(t =>
+        t.id === action.taskId ? { ...t, completed: action.completing } : t
+      );
+      const newXp = Math.max(0, state.xp + action.xpDelta);
+      const newLevel = Math.max(1, Math.floor(newXp / XP_PER_LEVEL) + 1);
+      const newCoins = state.coins + action.coinDelta; // allow negative
+      let newBoosts = state.activeBoosts;
+      if (action.completing) {
+        const consume: ActiveBoost['type'][] = ['xp_2x', 'xp_3x', 'coin_2x'];
+        newBoosts = state.activeBoosts
+          .map(b => consume.includes(b.type) && typeof b.remainingTasks === 'number'
+            ? { ...b, remainingTasks: b.remainingTasks - 1 } : b)
+          .filter(b => consume.includes(b.type) ? (b.remainingTasks ?? 0) > 0 : true);
+      }
+      newState = {
+        ...state,
+        tasks: newTasks,
+        xp: newXp,
+        level: newLevel,
+        coins: newCoins,
+        totalTasksCompleted: Math.max(0, state.totalTasksCompleted + (action.completing ? 1 : -1)),
+        lastActiveDate: action.completing ? getToday() : state.lastActiveDate,
+        activeBoosts: newBoosts,
+      };
       break;
     }
 
