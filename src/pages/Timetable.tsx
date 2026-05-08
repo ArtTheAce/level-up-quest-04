@@ -195,7 +195,7 @@ export default function Timetable() {
           classes={visibleClasses}
           tasks={scheduledTasks}
           onEditClass={openEdit}
-          onToggleTask={(id) => dispatch({ type: 'TOGGLE_TASK', taskId: id })}
+          onToggleTask={(id) => toggleTask(id)}
         />
       ) : (
         <MonthView
@@ -221,7 +221,7 @@ export default function Timetable() {
                   t.completed && 'opacity-50'
                 )}
               >
-                <button onClick={() => dispatch({ type: 'TOGGLE_TASK', taskId: t.id })}>
+                <button onClick={() => toggleTask(t.id)}>
                   {t.completed
                     ? <CheckCircle2 className="h-5 w-5 text-primary" />
                     : <Circle className="h-5 w-5 text-muted-foreground" />}

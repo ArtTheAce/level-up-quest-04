@@ -245,7 +245,7 @@ export default function Tasks() {
                 )}
               >
                 <button
-                  onClick={() => dispatch({ type: 'TOGGLE_TASK', taskId: task.id })}
+                  onClick={() => toggleTask(task.id)}
                   className="shrink-0 mt-0.5"
                   aria-label="Toggle complete"
                 >
@@ -427,7 +427,7 @@ export default function Tasks() {
                   size="sm"
                   onClick={() => {
                     const t = state.tasks.find(x => x.id === editingId);
-                    if (t) dispatch({ type: 'TOGGLE_TASK', taskId: t.id });
+                    if (t) toggleTask(t.id);
                   }}
                 >
                   {state.tasks.find(t => t.id === editingId)?.completed ? 'Mark incomplete' : 'Mark complete'}
