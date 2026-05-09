@@ -21,6 +21,11 @@ interface LeaderboardEntry {
   show_streak: boolean;
   show_tasks_completed: boolean;
   show_badges: boolean;
+  custom_title: string | null;
+  active_aura: string | null;
+  is_ghost: boolean;
+  is_dethroned: boolean;
+  has_streak_crown: boolean;
 }
 
 const container = {
@@ -40,6 +45,53 @@ export default function Leaderboard() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Build entry list with cosmetic effects (ghost / dethroned / streak crown / aura / title).
+  const buildEntries = async (gameStates: any[], profiles: any[] | null, userIds: string[]): Promise<LeaderboardEntry[]> => {
+    // Pull cosmetic active_effects (these are publicly viewable per RLS)
+    const { data: effects } = await supabase
+      .from('active_effects')
+      .select('user_id, type, expires_at, consumed')
+      .in('user_id', userIds)
+      .eq('consumed', false)
+      .in('type', ['ghost', 'dethroned', 'streak_crown']);
+    const nowMs = Date.now();
+    const live = (effects || []).filter(e => !e.expires_at || new Date(e.expires_at).getTime() > nowMs);
+    const has = (uid: string, t: string) => live.some(e => e.user_id === uid && e.type === t);
+
+    // Determine streak crown holder: highest non-zero streak among users who own the item.
+    // (We approximate via active_effects; if no one has it, fall back to top streak.)
+    const crownEffect = live.filter(e => e.type === 'streak_crown');
+    let crownHolder: string | null = null;
+    if (crownEffect.length > 0) {
+      const candidates = gameStates.filter(g => crownEffect.some(c => c.user_id === g.user_id));
+      candidates.sort((a, b) => (b.streak || 0) - (a.streak || 0));
+      crownHolder = candidates[0]?.user_id || null;
+    } else {
+      const top = [...gameStates].sort((a, b) => (b.streak || 0) - (a.streak || 0))[0];
+      if (top && (top.streak || 0) > 0) crownHolder = top.user_id;
+    }
+
+    return gameStates.map(gs => {
+      const profile = profiles?.find((p: any) => p.user_id === gs.user_id);
+      return {
+        ...gs,
+        username: profile?.username || 'unknown',
+        display_name: profile?.display_name || null,
+        show_xp: profile?.show_xp ?? true,
+        show_level: profile?.show_level ?? true,
+        show_streak: profile?.show_streak ?? true,
+        show_tasks_completed: profile?.show_tasks_completed ?? true,
+        show_badges: profile?.show_badges ?? true,
+        custom_title: profile?.custom_title ?? null,
+        active_aura: profile?.active_aura ?? null,
+        earned_badges: gs.earned_badges || [],
+        is_ghost: has(gs.user_id, 'ghost'),
+        is_dethroned: has(gs.user_id, 'dethroned'),
+        has_streak_crown: gs.user_id === crownHolder,
+      };
+    });
+  };
+
   const fetchGlobalLeaderboard = async () => {
     setLoading(true);
     // Join profiles with game_state
@@ -54,23 +106,10 @@ export default function Leaderboard() {
     const userIds = gameStates.map(g => g.user_id);
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, username, display_name, show_xp, show_level, show_streak, show_tasks_completed, show_badges')
+      .select('user_id, username, display_name, show_xp, show_level, show_streak, show_tasks_completed, show_badges, custom_title, active_aura')
       .in('user_id', userIds);
 
-    const merged: LeaderboardEntry[] = gameStates.map(gs => {
-      const profile = profiles?.find(p => p.user_id === gs.user_id);
-      return {
-        ...gs,
-        username: profile?.username || 'unknown',
-        display_name: profile?.display_name || null,
-        show_xp: profile?.show_xp ?? true,
-        show_level: profile?.show_level ?? true,
-        show_streak: profile?.show_streak ?? true,
-        show_tasks_completed: profile?.show_tasks_completed ?? true,
-        show_badges: profile?.show_badges ?? true,
-        earned_badges: gs.earned_badges || [],
-      };
-    });
+    const merged = await buildEntries(gameStates, profiles, userIds);
 
     // Sort again
     merged.sort((a, b) => sortBy === 'xp' ? b.xp - a.xp : b.total_tasks_completed - a.total_tasks_completed);
@@ -101,23 +140,10 @@ export default function Leaderboard() {
 
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, username, display_name, show_xp, show_level, show_streak, show_tasks_completed, show_badges')
+      .select('user_id, username, display_name, show_xp, show_level, show_streak, show_tasks_completed, show_badges, custom_title, active_aura')
       .in('user_id', allIds);
 
-    const merged: LeaderboardEntry[] = gameStates.map(gs => {
-      const profile = profiles?.find(p => p.user_id === gs.user_id);
-      return {
-        ...gs,
-        username: profile?.username || 'unknown',
-        display_name: profile?.display_name || null,
-        show_xp: profile?.show_xp ?? true,
-        show_level: profile?.show_level ?? true,
-        show_streak: profile?.show_streak ?? true,
-        show_tasks_completed: profile?.show_tasks_completed ?? true,
-        show_badges: profile?.show_badges ?? true,
-        earned_badges: gs.earned_badges || [],
-      };
-    });
+    const merged = await buildEntries(gameStates, profiles, allIds);
 
     merged.sort((a, b) => sortBy === 'xp' ? b.xp - a.xp : b.total_tasks_completed - a.total_tasks_completed);
     setEntries(merged);
@@ -218,20 +244,42 @@ export default function Leaderboard() {
                 {/* User info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
+                    <span
+                      className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0"
+                      style={auraStyle(entry.active_aura)}
+                    >
+                      {(entry.display_name || entry.username || '?')[0]?.toUpperCase()}
+                    </span>
                     <p className="font-display font-bold truncate">
                       {entry.display_name || entry.username}
                       {isMe && <span className="text-primary ml-1">(you)</span>}
                     </p>
+                    {entry.has_streak_crown && <span title="Streak Crown">👑</span>}
+                    {entry.is_dethroned && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-500/15 text-red-500">
+                        Dethroned 👊
+                      </span>
+                    )}
                     {entry.show_badges && entry.equipped_badge && (
                       <span className="text-lg">{getEmojiForBadge(entry.equipped_badge)}</span>
                     )}
                     {idx === 0 && <Crown className="h-4 w-4 text-accent" />}
                   </div>
-                  <p className="text-xs text-muted-foreground">@{entry.username}</p>
+                  <p className="text-xs text-muted-foreground">
+                    @{entry.username}
+                    {entry.custom_title && <span className="ml-2 italic">· {entry.custom_title}</span>}
+                  </p>
                 </div>
 
                 {/* Stats */}
                 <div className="flex items-center gap-4 text-sm shrink-0">
+                  {entry.is_ghost && !isMe ? (
+                    <div className="text-center">
+                      <p className="font-bold text-muted-foreground">👻 ???</p>
+                      <p className="text-xs text-muted-foreground">hidden</p>
+                    </div>
+                  ) : (
+                  <>
                   {entry.show_xp && (
                     <div className="text-center">
                       <p className="font-bold text-primary">{entry.xp}</p>
@@ -255,6 +303,8 @@ export default function Leaderboard() {
                       <p className="text-xs text-muted-foreground">Tasks</p>
                     </div>
                   )}
+                  </>
+                  )}
                 </div>
               </motion.div>
             );
@@ -272,4 +322,14 @@ function getEmojiForBadge(badgeId: string): string {
     badge_centurion: '⚔️', badge_focus: '🧘',
   };
   return map[badgeId] || '🏅';
+}
+
+function auraStyle(aura: string | null): React.CSSProperties {
+  switch (aura) {
+    case 'flame':     return { boxShadow: '0 0 0 2px #f97316, 0 0 10px 2px #f97316aa', animation: 'pulse 1.5s infinite' };
+    case 'ice':       return { boxShadow: '0 0 0 2px #67e8f9, 0 0 10px 2px #67e8f9aa' };
+    case 'lightning': return { boxShadow: '0 0 0 2px #fde047, 0 0 10px 4px #fde04799' };
+    case 'villain':   return { boxShadow: '0 0 0 2px #ef4444, 0 0 12px 4px #ef444499', filter: 'contrast(1.1)' };
+    default:          return {};
+  }
 }
