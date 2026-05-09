@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { GameProvider } from "@/context/GameContext";
 import { AppLayout } from "@/components/AppLayout";
+import { IncomingEffectPopup } from "@/components/effects/IncomingEffectPopup";
 import Dashboard from "./pages/Dashboard";
 import Timetable from "./pages/Timetable";
 import Tasks from "./pages/Tasks";
@@ -42,6 +43,7 @@ function ProtectedRoutes() {
   return (
     <GameProvider>
       <AppLayout>
+        <IncomingEffectPopup />
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/timetable" element={<Timetable />} />
