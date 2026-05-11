@@ -218,15 +218,51 @@ export default function Shop() {
           animate="show"
           className="grid sm:grid-cols-2 gap-4"
         >
+          {activeCategory === 'theme' && (() => {
+            const isDefaultActive = state.activeTheme === 'default';
+            return (
+              <motion.div
+                key="theme_default"
+                variants={item}
+                whileHover={{ scale: 1.02 }}
+                className={`glass-card p-5 flex flex-col gap-3 relative overflow-hidden transition-shadow ${isDefaultActive ? 'ring-2 ring-primary' : 'ring-1 ring-primary/20'}`}
+              >
+                {isDefaultActive && <div className="absolute top-3 right-3"><Check className="h-5 w-5 text-primary" /></div>}
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">✨</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-display font-bold">Default</h3>
+                    <p className="text-sm text-muted-foreground">The classic Questify look</p>
+                  </div>
+                </div>
+                <div className="mt-auto flex items-center justify-between">
+                  <span className="text-xs text-primary font-medium">Free</span>
+                  <Button
+                    size="sm"
+                    variant={isDefaultActive ? 'secondary' : 'outline'}
+                    disabled={isDefaultActive}
+                    onClick={() => {
+                      dispatch({ type: 'SET_THEME', themeId: 'default' });
+                      toast.success('Default theme activated! ✨');
+                    }}
+                    className="ml-auto"
+                  >
+                    {isDefaultActive ? 'Active' : 'Equip'}
+                  </Button>
+                </div>
+              </motion.div>
+            );
+          })()}
           {filteredItems.map(shopItem => {
             const btnState = getButtonState(shopItem);
             const owned = shopItem.oneTime && isPurchased(shopItem.id);
+            const themeActive = activeCategory === 'theme' && owned && isEquippedTheme(shopItem.id);
             return (
               <motion.div
                 key={shopItem.id}
                 variants={item}
                 whileHover={{ scale: 1.02 }}
-                className={`glass-card p-5 flex flex-col gap-3 relative overflow-hidden transition-shadow ${owned ? 'ring-1 ring-primary/20' : 'hover:shadow-lg'}`}
+                className={`glass-card p-5 flex flex-col gap-3 relative overflow-hidden transition-shadow ${themeActive ? 'ring-2 ring-primary' : owned ? 'ring-1 ring-primary/20' : 'hover:shadow-lg'}`}
               >
                 {owned && <div className="absolute top-3 right-3"><Check className="h-5 w-5 text-primary" /></div>}
                 <div className="flex items-start gap-3">
@@ -243,7 +279,7 @@ export default function Shop() {
                       {shopItem.price}
                     </div>
                   )}
-                  {owned && <span className="text-xs text-primary font-medium">Owned</span>}
+                  {owned && <span className="text-xs text-primary font-medium">{themeActive ? 'Equipped' : 'Owned'}</span>}
                   <Button
                     size="sm"
                     variant={btnState.variant}
