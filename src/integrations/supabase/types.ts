@@ -49,6 +49,7 @@ export type Database = {
       }
       daily_quests: {
         Row: {
+          baselines: Json
           claimed: Json
           expires_at: string
           generated_at: string
@@ -57,6 +58,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          baselines?: Json
           claimed?: Json
           expires_at?: string
           generated_at?: string
@@ -65,6 +67,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          baselines?: Json
           claimed?: Json
           expires_at?: string
           generated_at?: string
