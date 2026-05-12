@@ -43,16 +43,18 @@ export default function Shop() {
   const isBadgeEarned = (badgeId: string) => state.earnedBadges.includes(badgeId);
 
   const handlePurchase = (shopItem: ShopItem) => {
-    if (state.coins < shopItem.price) {
-      toast.error('Not enough coins!', { description: 'Complete more tasks to earn coins.' });
-      return;
-    }
+    // Ownership check FIRST — owned items must never re-trigger a coin check.
     if (shopItem.oneTime && isPurchased(shopItem.id)) {
       if (shopItem.category === 'theme') {
         const themeId = shopItem.id.replace('theme_', '') as ThemeId;
+        if (isEquippedTheme(shopItem.id)) return;
         dispatch({ type: 'SET_THEME', themeId });
-        toast.success(`${shopItem.name} theme activated! ${shopItem.icon}`);
+        toast.success(`${shopItem.name} theme equipped! ${shopItem.icon}`);
       }
+      return;
+    }
+    if (state.coins < shopItem.price) {
+      toast.error('Not enough coins!', { description: 'Complete more tasks to earn coins.' });
       return;
     }
     dispatch({ type: 'PURCHASE_ITEM', item: shopItem });
