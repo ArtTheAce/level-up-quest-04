@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useGame } from '@/context/GameContext';
 import { motion } from 'framer-motion';
-import { Play, Pause, RotateCcw, Coffee } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type Mode = 'focus' | 'break';
@@ -22,6 +22,9 @@ export default function FocusMode() {
     return 0;
   });
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const alarmCtxRef = useRef<AudioContext | null>(null);
+  const alarmTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [alarmActive, setAlarmActive] = useState(false);
 
   const totalTime = mode === 'focus' ? FOCUS_TIME : BREAK_TIME;
   const progress = ((totalTime - timeLeft) / totalTime) * 100;
@@ -30,30 +33,72 @@ export default function FocusMode() {
     localStorage.setItem('questify-focus-sessions', JSON.stringify({ date: new Date().toISOString().split('T')[0], count: sessionsCompleted }));
   }, [sessionsCompleted]);
 
+  const stopAlarm = useCallback(() => {
+    alarmTimersRef.current.forEach(clearTimeout);
+    alarmTimersRef.current = [];
+    if (alarmCtxRef.current) {
+      try { alarmCtxRef.current.close(); } catch {}
+      alarmCtxRef.current = null;
+    }
+    setAlarmActive(false);
+  }, []);
+
   const playAlarm = useCallback(() => {
-    const ctx = new AudioContext();
-    const playBeep = (time: number, freq: number) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = freq;
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(0.3, time);
-      gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
-      osc.start(time);
-      osc.stop(time + 0.3);
+    // Stop any existing alarm first
+    alarmTimersRef.current.forEach(clearTimeout);
+    alarmTimersRef.current = [];
+    if (alarmCtxRef.current) {
+      try { alarmCtxRef.current.close(); } catch {}
+    }
+
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    alarmCtxRef.current = ctx;
+    setAlarmActive(true);
+
+    const ringOnce = (startAt: number) => {
+      // A 3-beep ring pattern
+      const beep = (offset: number, freq: number, dur: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const t = startAt + offset;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.4, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.start(t);
+        osc.stop(t + dur);
+      };
+      beep(0, 880, 0.35);
+      beep(0.4, 880, 0.35);
+      beep(0.8, 1320, 0.5);
     };
-    playBeep(ctx.currentTime, 660);
-    playBeep(ctx.currentTime + 0.35, 660);
-    playBeep(ctx.currentTime + 0.7, 880);
+
+    // Ring repeatedly until dismissed (every ~1.8s for up to 60s)
+    const RING_INTERVAL_MS = 1800;
+    const MAX_RINGS = 33; // ~60s
+    ringOnce(ctx.currentTime);
+    for (let i = 1; i < MAX_RINGS; i++) {
+      const timer = setTimeout(() => {
+        if (alarmCtxRef.current === ctx) ringOnce(ctx.currentTime);
+      }, i * RING_INTERVAL_MS);
+      alarmTimersRef.current.push(timer);
+    }
+    // Auto-stop after the last ring
+    const stopTimer = setTimeout(() => stopAlarm(), MAX_RINGS * RING_INTERVAL_MS + 1500);
+    alarmTimersRef.current.push(stopTimer);
 
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('Focus Timer', { body: mode === 'focus' ? '✅ Focus session complete! Time for a break.' : '☕ Break over! Ready to focus again?' });
     } else if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
-  }, [mode]);
+  }, [mode, stopAlarm]);
+
+  // Cleanup on unmount
+  useEffect(() => () => stopAlarm(), [stopAlarm]);
 
   const completeSession = useCallback(() => {
     playAlarm();
@@ -97,6 +142,7 @@ export default function FocusMode() {
   }, [isRunning, completeSession]);
 
   const reset = () => {
+    stopAlarm();
     setIsRunning(false);
     setTimeLeft(mode === 'focus' ? FOCUS_TIME : BREAK_TIME);
   };
@@ -151,7 +197,7 @@ export default function FocusMode() {
           <RotateCcw className="h-5 w-5" />
         </Button>
         <Button
-          onClick={() => setIsRunning(!isRunning)}
+          onClick={() => { stopAlarm(); setIsRunning(!isRunning); }}
           className="h-14 w-14 rounded-full text-lg"
           size="icon"
         >
@@ -161,6 +207,7 @@ export default function FocusMode() {
           variant="outline"
           size="icon"
           onClick={() => {
+            stopAlarm();
             setMode(mode === 'focus' ? 'break' : 'focus');
             setTimeLeft(mode === 'focus' ? BREAK_TIME : FOCUS_TIME);
             setIsRunning(false);
@@ -170,6 +217,23 @@ export default function FocusMode() {
           <Coffee className="h-5 w-5" />
         </Button>
       </div>
+
+      {alarmActive && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full"
+        >
+          <Button
+            onClick={stopAlarm}
+            variant="destructive"
+            className="w-full h-12 rounded-full animate-pulse"
+          >
+            <BellOff className="h-5 w-5 mr-2" />
+            Stop alarm
+          </Button>
+        </motion.div>
+      )}
 
       <div className="glass-card p-4 w-full text-center">
         <p className="text-sm text-muted-foreground">
