@@ -123,7 +123,7 @@ export default function Settings() {
             </div>
             <Switch
               checked={state.darkMode}
-              onCheckedChange={() => dispatch({ type: 'TOGGLE_DARK_MODE' })}
+              onCheckedChange={() => dispatch({ type: 'SET_DARK_MODE', enabled: !state.darkMode })}
             />
           </div>
           <div>

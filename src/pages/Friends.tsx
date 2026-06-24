@@ -164,7 +164,7 @@ export default function Friends() {
   }
 
   async function acceptRequest(requestId: string) {
-    const { error } = await supabase.rpc('accept_friend_request', { request_id: requestId });
+    const { error } = await supabase.rpc('accept_friend_request', { _request_id: requestId });
     if (error) { toast.error('Failed to accept request'); return; }
     toast.success('Friend added! 🎉');
     loadFriendsData();
