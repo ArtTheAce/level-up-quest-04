@@ -1,0 +1,463 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&display=swap');
+
+@layer base {
+  /* ─── Default theme (light) ──────────────────────────────────────────── */
+  :root {
+    --background: 40 33% 98%;
+    --foreground: 220 20% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 14%;
+
+    --primary: 145 63% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 92%;
+    --secondary-foreground: 220 20% 14%;
+
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 28 100% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 14% 90%;
+    --input: 220 14% 90%;
+    --ring: 145 63% 42%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --xp-bar: 145 63% 42%;
+    --streak-fire: 28 100% 58%;
+    --coin-gold: 45 100% 51%;
+    --level-purple: 265 70% 58%;
+    --easy: 145 63% 42%;
+    --medium: 45 100% 51%;
+    --hard: 0 72% 51%;
+
+    /* Subject colors */
+    --subject-math: 220 80% 58%;
+    --subject-physics: 145 63% 42%;
+    --subject-chemistry: 35 90% 50%;
+    --subject-english: 280 65% 55%;
+    --subject-history: 28 80% 50%;
+    --subject-art: 340 70% 55%;
+    --subject-music: 190 70% 45%;
+    --subject-other: 220 14% 55%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 14%;
+    --sidebar-primary: 145 63% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 145 63% 95%;
+    --sidebar-accent-foreground: 145 63% 30%;
+    --sidebar-border: 220 14% 92%;
+    --sidebar-ring: 145 63% 42%;
+
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'Lora', serif;
+  }
+
+  /* ─── Midnight theme (intrinsically dark — purple) ───────────────────── */
+  [data-theme="midnight"] {
+    --background: 240 20% 8%;
+    --foreground: 240 10% 90%;
+    --card: 240 18% 12%;
+    --card-foreground: 240 10% 90%;
+    --popover: 240 18% 12%;
+    --popover-foreground: 240 10% 90%;
+    --primary: 265 70% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 15% 18%;
+    --secondary-foreground: 240 10% 85%;
+    --muted: 240 15% 15%;
+    --muted-foreground: 240 10% 55%;
+    --accent: 280 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 15% 20%;
+    --input: 240 15% 20%;
+    --ring: 265 70% 58%;
+    --sidebar-background: 240 20% 10%;
+    --sidebar-foreground: 240 10% 85%;
+    --sidebar-primary: 265 70% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 265 70% 20%;
+    --sidebar-accent-foreground: 265 70% 80%;
+    --sidebar-border: 240 15% 18%;
+    --sidebar-ring: 265 70% 58%;
+  }
+
+  /* ─── Sakura theme (light — pink cherry blossom) ─────────────────────── */
+  [data-theme="sakura"] {
+    --background: 340 30% 97%;
+    --foreground: 340 20% 15%;
+    --card: 340 30% 99%;
+    --card-foreground: 340 20% 15%;
+    --popover: 340 30% 99%;
+    --popover-foreground: 340 20% 15%;
+    --primary: 340 70% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 340 20% 92%;
+    --secondary-foreground: 340 20% 20%;
+    --muted: 340 20% 94%;
+    --muted-foreground: 340 10% 45%;
+    --accent: 320 65% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 340 20% 88%;
+    --input: 340 20% 88%;
+    --ring: 340 70% 60%;
+    --sidebar-background: 340 30% 99%;
+    --sidebar-foreground: 340 20% 15%;
+    --sidebar-primary: 340 70% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 340 70% 94%;
+    --sidebar-accent-foreground: 340 70% 35%;
+    --sidebar-border: 340 20% 90%;
+    --sidebar-ring: 340 70% 60%;
+  }
+
+  /* ─── Ocean theme (intrinsically dark — teal/blue) ───────────────────── */
+  [data-theme="ocean"] {
+    --background: 210 30% 8%;
+    --foreground: 210 15% 90%;
+    --card: 210 25% 12%;
+    --card-foreground: 210 15% 90%;
+    --popover: 210 25% 12%;
+    --popover-foreground: 210 15% 90%;
+    --primary: 195 80% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 18%;
+    --secondary-foreground: 210 15% 85%;
+    --muted: 210 20% 15%;
+    --muted-foreground: 210 10% 55%;
+    --accent: 180 65% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 20% 20%;
+    --input: 210 20% 20%;
+    --ring: 195 80% 50%;
+    --sidebar-background: 210 25% 10%;
+    --sidebar-foreground: 210 15% 85%;
+    --sidebar-primary: 195 80% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 195 80% 18%;
+    --sidebar-accent-foreground: 195 80% 75%;
+    --sidebar-border: 210 20% 18%;
+    --sidebar-ring: 195 80% 50%;
+  }
+
+  /* ─── Neon theme (intrinsically dark — cyberpunk) ────────────────────── */
+  [data-theme="neon"] {
+    --background: 270 25% 6%;
+    --foreground: 0 0% 95%;
+    --card: 270 22% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 270 22% 10%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 280 100% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 20% 16%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 270 20% 13%;
+    --muted-foreground: 270 10% 55%;
+    --accent: 160 100% 50%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 80% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 270 20% 20%;
+    --input: 270 20% 20%;
+    --ring: 280 100% 65%;
+    --sidebar-background: 270 25% 8%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 280 100% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 280 100% 18%;
+    --sidebar-accent-foreground: 280 100% 80%;
+    --sidebar-border: 270 20% 16%;
+    --sidebar-ring: 280 100% 65%;
+  }
+
+  /* ─── Sunset theme (light — warm orange/amber) ───────────────────────── */
+  [data-theme="sunset"] {
+    --background: 20 30% 97%;
+    --foreground: 20 20% 14%;
+    --card: 20 30% 99%;
+    --card-foreground: 20 20% 14%;
+    --popover: 20 30% 99%;
+    --popover-foreground: 20 20% 14%;
+    --primary: 15 85% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 20% 92%;
+    --secondary-foreground: 20 20% 20%;
+    --muted: 20 18% 94%;
+    --muted-foreground: 20 10% 45%;
+    --accent: 35 90% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 18% 88%;
+    --input: 20 18% 88%;
+    --ring: 15 85% 55%;
+    --sidebar-background: 20 30% 99%;
+    --sidebar-foreground: 20 20% 14%;
+    --sidebar-primary: 15 85% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 15 85% 94%;
+    --sidebar-accent-foreground: 15 85% 35%;
+    --sidebar-border: 20 18% 90%;
+    --sidebar-ring: 15 85% 55%;
+  }
+
+  /* ─── Generic dark mode (default theme + dark) ───────────────────────── */
+  /* Specificity: [0,1,0] — beats theme selectors of equal specificity via cascade */
+  .dark {
+    --background: 240 25% 6%;
+    --foreground: 230 15% 92%;
+    --card: 240 22% 10%;
+    --card-foreground: 230 15% 92%;
+    --popover: 240 22% 10%;
+    --popover-foreground: 230 15% 92%;
+    --primary: 145 63% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 18% 16%;
+    --secondary-foreground: 230 15% 88%;
+    --muted: 240 18% 13%;
+    --muted-foreground: 230 10% 55%;
+    --accent: 28 100% 58%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 80% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 18% 18%;
+    --input: 240 18% 18%;
+    --ring: 145 63% 42%;
+    --sidebar-background: 240 25% 8%;
+    --sidebar-foreground: 230 15% 88%;
+    --sidebar-primary: 145 63% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 145 63% 16%;
+    --sidebar-accent-foreground: 145 63% 75%;
+    --sidebar-border: 240 18% 16%;
+    --sidebar-ring: 145 63% 42%;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Feature 5 — Per-theme dark mode variants
+     Compound selectors have specificity [0,2,0], beating .dark ([0,1,0]).
+     This ensures each theme keeps its identity when dark mode is toggled.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* Midnight dark — deeper purple, fully dark */
+  [data-theme="midnight"].dark {
+    --background: 240 22% 5%;
+    --foreground: 240 10% 92%;
+    --card: 240 20% 9%;
+    --card-foreground: 240 10% 92%;
+    --popover: 240 20% 9%;
+    --popover-foreground: 240 10% 92%;
+    --primary: 265 72% 62%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 15% 14%;
+    --secondary-foreground: 240 10% 88%;
+    --muted: 240 15% 11%;
+    --muted-foreground: 240 10% 52%;
+    --accent: 280 82% 68%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 15% 16%;
+    --input: 240 15% 16%;
+    --ring: 265 72% 62%;
+    --sidebar-background: 240 22% 7%;
+    --sidebar-foreground: 240 10% 88%;
+    --sidebar-primary: 265 72% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 265 70% 16%;
+    --sidebar-accent-foreground: 265 70% 82%;
+    --sidebar-border: 240 15% 14%;
+    --sidebar-ring: 265 72% 62%;
+  }
+
+  /* Sakura dark — pink identity preserved on dark background */
+  [data-theme="sakura"].dark {
+    --background: 340 22% 7%;
+    --foreground: 340 15% 90%;
+    --card: 340 18% 11%;
+    --card-foreground: 340 15% 90%;
+    --popover: 340 18% 11%;
+    --popover-foreground: 340 15% 90%;
+    --primary: 340 68% 62%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 340 15% 17%;
+    --secondary-foreground: 340 12% 85%;
+    --muted: 340 15% 14%;
+    --muted-foreground: 340 8% 52%;
+    --accent: 320 62% 58%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 340 15% 20%;
+    --input: 340 15% 20%;
+    --ring: 340 68% 62%;
+    --sidebar-background: 340 22% 9%;
+    --sidebar-foreground: 340 12% 85%;
+    --sidebar-primary: 340 68% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 340 65% 18%;
+    --sidebar-accent-foreground: 340 65% 78%;
+    --sidebar-border: 340 15% 18%;
+    --sidebar-ring: 340 68% 62%;
+  }
+
+  /* Ocean dark — deeper teal on almost-black ocean floor */
+  [data-theme="ocean"].dark {
+    --background: 210 32% 5%;
+    --foreground: 210 15% 92%;
+    --card: 210 27% 9%;
+    --card-foreground: 210 15% 92%;
+    --popover: 210 27% 9%;
+    --popover-foreground: 210 15% 92%;
+    --primary: 195 82% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 14%;
+    --secondary-foreground: 210 15% 88%;
+    --muted: 210 20% 11%;
+    --muted-foreground: 210 10% 52%;
+    --accent: 180 68% 46%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 20% 16%;
+    --input: 210 20% 16%;
+    --ring: 195 82% 52%;
+    --sidebar-background: 210 27% 7%;
+    --sidebar-foreground: 210 15% 85%;
+    --sidebar-primary: 195 82% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 195 80% 14%;
+    --sidebar-accent-foreground: 195 80% 76%;
+    --sidebar-border: 210 20% 14%;
+    --sidebar-ring: 195 82% 52%;
+  }
+
+  /* Neon dark — maximum contrast, deeper voids */
+  [data-theme="neon"].dark {
+    --background: 270 28% 4%;
+    --foreground: 0 0% 96%;
+    --card: 270 24% 8%;
+    --card-foreground: 0 0% 96%;
+    --popover: 270 24% 8%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 280 100% 68%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 22% 12%;
+    --secondary-foreground: 0 0% 92%;
+    --muted: 270 22% 9%;
+    --muted-foreground: 270 10% 52%;
+    --accent: 160 100% 52%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 82% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 270 22% 16%;
+    --input: 270 22% 16%;
+    --ring: 280 100% 68%;
+    --sidebar-background: 270 28% 6%;
+    --sidebar-foreground: 0 0% 92%;
+    --sidebar-primary: 280 100% 68%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 280 100% 14%;
+    --sidebar-accent-foreground: 280 100% 82%;
+    --sidebar-border: 270 22% 12%;
+    --sidebar-ring: 280 100% 68%;
+  }
+
+  /* Sunset dark — warm amber/orange on dark charcoal */
+  [data-theme="sunset"].dark {
+    --background: 20 22% 6%;
+    --foreground: 20 15% 90%;
+    --card: 20 18% 10%;
+    --card-foreground: 20 15% 90%;
+    --popover: 20 18% 10%;
+    --popover-foreground: 20 15% 90%;
+    --primary: 15 88% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 15% 16%;
+    --secondary-foreground: 20 12% 86%;
+    --muted: 20 15% 13%;
+    --muted-foreground: 20 8% 50%;
+    --accent: 35 92% 58%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 15% 20%;
+    --input: 20 15% 20%;
+    --ring: 15 88% 58%;
+    --sidebar-background: 20 22% 8%;
+    --sidebar-foreground: 20 12% 85%;
+    --sidebar-primary: 15 88% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 15 85% 18%;
+    --sidebar-accent-foreground: 15 85% 76%;
+    --sidebar-border: 20 15% 16%;
+    --sidebar-ring: 15 88% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    font-size: 17px;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    line-height: 1.6;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+  h1 { @apply text-3xl md:text-4xl; }
+  h2 { @apply text-2xl md:text-3xl; }
+  h3 { @apply text-xl md:text-2xl; }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border rounded-xl shadow-sm;
+  }
+  .xp-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(165 63% 50%));
+  }
+  .streak-gradient {
+    background: linear-gradient(135deg, hsl(var(--streak-fire)), hsl(45 100% 55%));
+  }
+  .coin-gradient {
+    background: linear-gradient(135deg, hsl(var(--coin-gold)), hsl(35 100% 60%));
+  }
+  .level-gradient {
+    background: linear-gradient(135deg, hsl(var(--level-purple)), hsl(280 70% 65%));
+  }
+}
+
+@layer utilities {
+  .text-display {
+    font-family: var(--font-display);
+  }
+}
