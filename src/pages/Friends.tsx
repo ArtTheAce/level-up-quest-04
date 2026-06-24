@@ -206,7 +206,7 @@ export default function Friends() {
 
       {/* Search */}
       <div className="glass-card p-5 space-y-4">
-        <h2 className="font-display font-bold">Find People</h2>
+        <h2 className="font-display font-bold text-base">Find People</h2>
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -277,7 +277,7 @@ export default function Friends() {
       {incomingRequests.length > 0 && (
         <div className="glass-card p-5 space-y-3">
           <h2 className="font-display font-bold flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary" /> Incoming Requests
+            <Clock className="h-5 w-5 text-primary" /> <span className="text-base">Incoming Requests</span>
             <span className="ml-auto bg-primary text-primary-foreground text-xs rounded-full px-2 py-0.5">
               {incomingRequests.length}
             </span>
@@ -311,7 +311,7 @@ export default function Friends() {
       {/* Outgoing Requests */}
       {outgoingRequests.length > 0 && (
         <div className="glass-card p-5 space-y-3">
-          <h2 className="font-display font-bold text-muted-foreground">Sent Requests</h2>
+          <h2 className="font-display font-bold text-base text-muted-foreground">Sent Requests</h2>
           {outgoingRequests.map(req => {
             const p = req.profile;
             return (
@@ -342,7 +342,7 @@ export default function Friends() {
       {/* Friends List */}
       <div className="glass-card p-5 space-y-3">
         <h2 className="font-display font-bold flex items-center gap-2">
-          <UserCheck className="h-5 w-5 text-primary" /> My Friends
+          <UserCheck className="h-5 w-5 text-primary" /> <span className="text-base">My Friends</span>
           {!loading && <span className="text-muted-foreground font-normal text-sm">({friends.length})</span>}
         </h2>
         {loading ? (
