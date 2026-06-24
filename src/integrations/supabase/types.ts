@@ -435,7 +435,9 @@ export type Database = {
           days: number[]
           end_time: string
           id: string
+          is_recurring: boolean
           room: string | null
+          specific_date: string | null
           start_time: string
           subject: string
           subject_color: string
@@ -448,7 +450,9 @@ export type Database = {
           days?: number[]
           end_time: string
           id?: string
+          is_recurring?: boolean
           room?: string | null
+          specific_date?: string | null
           start_time: string
           subject: string
           subject_color?: string
@@ -461,7 +465,9 @@ export type Database = {
           days?: number[]
           end_time?: string
           id?: string
+          is_recurring?: boolean
           room?: string | null
+          specific_date?: string | null
           start_time?: string
           subject?: string
           subject_color?: string
