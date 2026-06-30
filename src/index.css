@@ -2,48 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   /* ─── Default theme (light) ──────────────────────────────────────────── */
   :root {
-    --background: 40 33% 98%;
-    --foreground: 220 20% 14%;
+    /* ─── Arcadia — Light ─────────────────────────────────────────────
+       Deep indigo primary, emerald accent, gold for rewards/progression.
+       Modern, premium, slightly futuristic. */
+    --background: 220 30% 98%;
+    --foreground: 230 30% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 14%;
+    --card-foreground: 230 30% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 14%;
+    --popover-foreground: 230 30% 12%;
 
-    --primary: 145 63% 42%;
+    --primary: 230 68% 56%;          /* Deep indigo */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 92%;
-    --secondary-foreground: 220 20% 14%;
+    --secondary: 220 20% 94%;
+    --secondary-foreground: 230 30% 14%;
 
-    --muted: 220 14% 95%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 220 20% 96%;
+    --muted-foreground: 225 12% 45%;
 
-    --accent: 28 100% 58%;
+    --accent: 158 64% 42%;           /* Emerald */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 14% 90%;
-    --input: 220 14% 90%;
-    --ring: 145 63% 42%;
+    --border: 220 18% 90%;
+    --input: 220 18% 90%;
+    --ring: 230 68% 56%;
 
     --radius: 0.75rem;
 
     /* Custom tokens */
-    --xp-bar: 145 63% 42%;
-    --streak-fire: 28 100% 58%;
-    --coin-gold: 45 100% 51%;
-    --level-purple: 265 70% 58%;
-    --easy: 145 63% 42%;
-    --medium: 45 100% 51%;
+    --xp-bar: 230 68% 56%;
+    --streak-fire: 14 90% 58%;
+    --coin-gold: 42 92% 55%;          /* Achievement gold */
+    --level-purple: 265 70% 60%;
+    --easy: 158 64% 42%;
+    --medium: 42 92% 55%;
     --hard: 0 72% 51%;
 
     /* Subject colors */
@@ -56,17 +59,17 @@
     --subject-music: 190 70% 45%;
     --subject-other: 220 14% 55%;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 20% 14%;
-    --sidebar-primary: 145 63% 42%;
+    --sidebar-background: 220 30% 99%;
+    --sidebar-foreground: 230 30% 14%;
+    --sidebar-primary: 230 68% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 145 63% 95%;
-    --sidebar-accent-foreground: 145 63% 30%;
-    --sidebar-border: 220 14% 92%;
-    --sidebar-ring: 145 63% 42%;
+    --sidebar-accent: 230 68% 95%;
+    --sidebar-accent-foreground: 230 68% 35%;
+    --sidebar-border: 220 18% 92%;
+    --sidebar-ring: 230 68% 56%;
 
-    --font-display: 'Playfair Display', serif;
-    --font-body: 'Lora', serif;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
   }
 
   /* ─── Midnight theme (intrinsically dark — purple) ───────────────────── */
@@ -227,33 +230,34 @@
   /* ─── Generic dark mode (default theme + dark) ───────────────────────── */
   /* Specificity: [0,1,0] — beats theme selectors of equal specificity via cascade */
   .dark {
-    --background: 240 25% 6%;
-    --foreground: 230 15% 92%;
-    --card: 240 22% 10%;
-    --card-foreground: 230 15% 92%;
-    --popover: 240 22% 10%;
-    --popover-foreground: 230 15% 92%;
-    --primary: 145 63% 42%;
+    /* ─── Arcadia — Dark ───────────────────────────────────────────── */
+    --background: 230 30% 7%;
+    --foreground: 220 20% 94%;
+    --card: 230 28% 11%;
+    --card-foreground: 220 20% 94%;
+    --popover: 230 28% 11%;
+    --popover-foreground: 220 20% 94%;
+    --primary: 230 75% 65%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 18% 16%;
-    --secondary-foreground: 230 15% 88%;
-    --muted: 240 18% 13%;
-    --muted-foreground: 230 10% 55%;
-    --accent: 28 100% 58%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 80% 58%;
+    --secondary: 230 22% 16%;
+    --secondary-foreground: 220 20% 90%;
+    --muted: 230 22% 13%;
+    --muted-foreground: 225 12% 60%;
+    --accent: 158 68% 50%;
+    --accent-foreground: 230 30% 10%;
+    --destructive: 0 78% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 18% 18%;
-    --input: 240 18% 18%;
-    --ring: 145 63% 42%;
-    --sidebar-background: 240 25% 8%;
-    --sidebar-foreground: 230 15% 88%;
-    --sidebar-primary: 145 63% 42%;
+    --border: 230 22% 18%;
+    --input: 230 22% 18%;
+    --ring: 230 75% 65%;
+    --sidebar-background: 230 30% 9%;
+    --sidebar-foreground: 220 20% 90%;
+    --sidebar-primary: 230 75% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 145 63% 16%;
-    --sidebar-accent-foreground: 145 63% 75%;
-    --sidebar-border: 240 18% 16%;
-    --sidebar-ring: 145 63% 42%;
+    --sidebar-accent: 230 60% 20%;
+    --sidebar-accent-foreground: 230 75% 85%;
+    --sidebar-border: 230 22% 16%;
+    --sidebar-ring: 230 75% 65%;
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
@@ -443,7 +447,7 @@
     @apply bg-card/80 backdrop-blur-sm border border-border rounded-xl shadow-sm;
   }
   .xp-gradient {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(165 63% 50%));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
   }
   .streak-gradient {
     background: linear-gradient(135deg, hsl(var(--streak-fire)), hsl(45 100% 55%));
