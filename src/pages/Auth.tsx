@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { LogIn, UserPlus, Mail } from 'lucide-react';
+import { ArcadiaLogo } from '@/components/ArcadiaLogo';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -66,7 +67,7 @@ export default function Auth() {
           },
         });
         if (error) throw error;
-        toast.success('Account created! Welcome to Questify! 🚀');
+        toast.success('Welcome to Arcadia — your journey begins. 🚀');
       }
     } catch (err: any) {
       toast.error(err.message || 'Authentication failed');
@@ -97,11 +98,9 @@ export default function Auth() {
       >
         {/* Logo */}
         <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl xp-gradient flex items-center justify-center text-primary-foreground font-display font-bold text-3xl mx-auto mb-4">
-            Q
-          </div>
-          <h1 className="text-3xl font-display font-bold text-foreground">Questify</h1>
-          <p className="text-muted-foreground mt-1">Level up your productivity 🎮</p>
+          <ArcadiaLogo size={64} className="mx-auto mb-4" />
+          <h1 className="text-3xl font-display font-semibold tracking-tight text-foreground">Arcadia</h1>
+          <p className="text-muted-foreground mt-1">Productivity, leveled up.</p>
         </div>
 
         {/* Auth Form */}

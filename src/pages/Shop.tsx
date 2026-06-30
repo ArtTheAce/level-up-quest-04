@@ -271,7 +271,7 @@ export default function Shop() {
                   <span className="text-3xl">✨</span>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-display font-bold">Default</h3>
-                    <p className="text-sm text-muted-foreground">The classic Questify look — light & dark modes included</p>
+                    <p className="text-sm text-muted-foreground">The signature Arcadia look — light & dark modes included</p>
                   </div>
                 </div>
                 <div className="mt-auto flex items-center justify-between">

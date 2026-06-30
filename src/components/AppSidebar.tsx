@@ -1,4 +1,5 @@
 import { LayoutDashboard, Calendar, CheckSquare, Target, Trophy, ShoppingBag, Users, Award, Settings, LogOut } from 'lucide-react';
+import { ArcadiaLogo } from '@/components/ArcadiaLogo';
 import { NavLink } from '@/components/NavLink';
 import { useGame } from '@/context/GameContext';
 import { useAuth } from '@/context/AuthContext';
@@ -35,12 +36,12 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <div className={`p-4 ${collapsed ? 'px-2' : ''}`}>
-          <div className="flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 rounded-xl xp-gradient flex items-center justify-center text-primary-foreground font-display font-bold text-lg shrink-0">
-              Q
-            </div>
+          <div className="flex items-center gap-2.5 mb-6">
+            <ArcadiaLogo size={40} />
             {!collapsed && (
-              <span className="font-display font-bold text-xl text-foreground">Questify</span>
+              <span className="font-display font-semibold text-xl text-foreground tracking-tight">
+                Arcadia
+              </span>
             )}
           </div>
 
